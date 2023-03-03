@@ -1,36 +1,25 @@
 mod color;
 mod ray;
+mod sphere;
 mod vec3;
 
 use color::write_color;
 use ray::Ray;
+use sphere::Sphere;
 use vec3::Vec3;
 
-fn hit_sphere(center: &Vec3, radius: f64, ray: &Ray) -> f64 {
-    let oc = ray.origin - *center;
-    let a = ray.direction.length2();
-    let half_b = oc.dot(&ray.direction);
-    let c = oc.length2() - radius * radius;
-    let discriminant = half_b * half_b - a * c;
-    if discriminant < 0.0 {
-        return -1.0;
-    } else {
-        return -half_b - discriminant.sqrt() / a;
-    }
-}
-
 fn ray_color(ray: &Ray) -> Vec3 {
-    let center = Vec3::new(0.0, 0.0, -1.0);
-    let t = hit_sphere(&center, 0.5, ray);
-    if t > 0.0 {
-        let n = (ray.at(t) - center).normalize();
-        return 0.5 * (n + 1.0);
+    let sphere = Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5);
+    match sphere.hit(ray, 0.0, f64::MAX) {
+        None => {
+            let unit_direction = ray.direction.normalize();
+            let t = 0.5 * (unit_direction.y + 1.0);
+            let white = Vec3::one();
+            let blue = Vec3::new(0.5, 0.7, 1.0);
+            white + t * (blue - white)
+        }
+        Some(hit_record) => 0.5 * (hit_record.normal + 1.0),
     }
-    let unit_direction = ray.direction.normalize();
-    let t = 0.5 * (unit_direction.y + 1.0);
-    let white = Vec3::one();
-    let blue = Vec3::new(0.5, 0.7, 1.0);
-    white + t * (blue - white)
 }
 
 fn main() {
