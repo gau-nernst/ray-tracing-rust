@@ -4,9 +4,9 @@ mod vec3;
 
 use color::write_color;
 use ray::Ray;
-use vec3::{Color, Point3, Vec3};
+use vec3::Vec3;
 
-fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> f64 {
+fn hit_sphere(center: &Vec3, radius: f64, ray: &Ray) -> f64 {
     let oc = ray.origin - *center;
     let a = ray.direction.length2();
     let half_b = oc.dot(&ray.direction);
@@ -15,19 +15,22 @@ fn hit_sphere(center: &Point3, radius: f64, ray: &Ray) -> f64 {
     if discriminant < 0.0 {
         return -1.0;
     } else {
-        return (-half_b - discriminant.sqrt()) / (a);
+        return -half_b - discriminant.sqrt() / a;
     }
 }
 
-fn ray_color(ray: &Ray) -> Color {
-    let t = hit_sphere(&Point3::new(0.0, 0.0, -1.0), 0.5, ray);
+fn ray_color(ray: &Ray) -> Vec3 {
+    let center = Vec3::new(0.0, 0.0, -1.0);
+    let t = hit_sphere(&center, 0.5, ray);
     if t > 0.0 {
-        let n = (ray.at(t) - Vec3::new(0.0, 0.0, -1.0)).normalize();
-        return 0.5 * Color::new(n.0 + 1.0, n.1 + 1.0, n.2 + 1.0);
+        let n = (ray.at(t) - center).normalize();
+        return 0.5 * (n + 1.0);
     }
     let unit_direction = ray.direction.normalize();
-    let t = 0.5 * (unit_direction.1 + 1.0);
-    return (1.0 - t) * Color::one() + t * Color::new(0.5, 0.7, 1.0);
+    let t = 0.5 * (unit_direction.y + 1.0);
+    let white = Vec3::one();
+    let blue = Vec3::new(0.5, 0.7, 1.0);
+    white + t * (blue - white)
 }
 
 fn main() {
@@ -39,19 +42,20 @@ fn main() {
     let viewport_width = viewport_height * aspect_ratio;
     let focal_length = 1.0;
 
-    let origin = Point3::zero();
+    // NOTE: camera pointing in negative z direction
+    let origin = Vec3::zero();
     let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
     let vertical = Vec3::new(0.0, viewport_height, 0.0);
     let lower_left_corner =
-        origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
+        origin - 0.5 * horizontal - 0.5 * vertical - Vec3::new(0.0, 0.0, focal_length);
 
     println!("P3\n{img_w} {img_h}\n255");
 
     for j in (0..img_h).rev() {
         eprint!("\rScanlines remaining: {j} ");
         for i in 0..img_w {
-            let u = i as f64 / (img_w - 1) as f64;
-            let v = j as f64 / (img_h - 1) as f64;
+            let u = (i as f64 + 0.5) / img_w as f64;
+            let v = (j as f64 + 0.5) / img_h as f64;
             let r = Ray::new(
                 origin,
                 lower_left_corner + horizontal * u + vertical * v - origin,
