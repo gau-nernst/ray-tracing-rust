@@ -9,14 +9,25 @@ use camera::Camera;
 use color::write_color;
 use rand::RandomGenerator;
 use ray::Ray;
-use sphere::Sphere;
+use sphere::{HitRecord, Sphere};
 use vec3::Vec3;
 
-fn ray_color(ray: &Ray, spheres: &Vec<Sphere>) -> Vec3 {
+fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32, random: &mut RandomGenerator) -> Vec3 {
+    if depth <= 0 {
+        return Vec3::zero();
+    }
     for sphere in spheres {
-        let hit_record = sphere.hit(ray, 0.0, f64::MAX);
+        // shadow acne
+        let hit_record = sphere.hit(ray, 0.0001, f64::MAX);
         if hit_record.is_some() {
-            return 0.5 * (hit_record.unwrap().normal + 1.0);
+            let HitRecord {
+                incidence, normal, ..
+            } = hit_record.unwrap();
+
+            // Lambertian diffuse
+            let target = incidence + normal + Vec3::random_unit_sphere(random).normalize();
+            let diffuse_ray = Ray::new(incidence, target - incidence);
+            return 0.5 * ray_color(&diffuse_ray, spheres, depth - 1, random);
         }
     }
     let unit_direction = ray.direction.normalize();
@@ -31,6 +42,7 @@ fn main() {
     let img_w = 400;
     let img_h = (img_w as f64 / aspect_ratio) as i32;
     let samples_per_pixel = 100;
+    let max_depth = 50;
 
     let camera = Camera::new(aspect_ratio);
     let mut random = RandomGenerator::new(0);
@@ -50,7 +62,7 @@ fn main() {
                 let u = (i as f64 + random.rand()) / img_w as f64;
                 let v = (j as f64 + random.rand()) / img_h as f64;
                 let r = camera.get_ray(u, v);
-                pixel_color += ray_color(&r, &spheres);
+                pixel_color += ray_color(&r, &spheres, max_depth, &mut random);
             }
             pixel_color /= samples_per_pixel as f64;
             write_color(&pixel_color);

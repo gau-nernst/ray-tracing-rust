@@ -1,3 +1,4 @@
+use crate::rand::RandomGenerator;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy)]
@@ -23,17 +24,29 @@ impl Vec3 {
     pub fn length2(&self) -> f64 {
         dot(self, self)
     }
-    pub fn dot(&self, other: &Vec3) -> f64 {
+    pub fn dot(&self, other: &Self) -> f64 {
         dot(self, other)
     }
-    pub fn cross(&self, other: &Vec3) -> Self {
+    pub fn cross(&self, other: &Self) -> Self {
         cross(self, other)
     }
-    pub fn normalize(&self) -> Vec3 {
+    pub fn normalize(&self) -> Self {
         normalize(*self)
     }
     pub fn normalize_(&mut self) {
         normalize_(self)
+    }
+    pub fn random_unit_sphere(random: &mut RandomGenerator) -> Self {
+        loop {
+            let p = Vec3::new(
+                random.rand_between(-1.0, 1.0),
+                random.rand_between(-1.0, 1.0),
+                random.rand_between(-1.0, 1.0),
+            );
+            if p.length2() < 1.0 {
+                return p;
+            }
+        }
     }
 }
 

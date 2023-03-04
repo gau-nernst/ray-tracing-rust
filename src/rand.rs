@@ -11,4 +11,7 @@ impl RandomGenerator {
         self.seed = self.seed.wrapping_mul(25214903917) + 11;
         (self.seed & 0xFFFF) as f64 / 0xFFFF as f64
     }
+    pub fn rand_between(&mut self, min: f64, max: f64) -> f64 {
+        min + (max - min) * self.rand()
+    }
 }
