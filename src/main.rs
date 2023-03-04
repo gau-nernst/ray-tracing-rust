@@ -1,5 +1,6 @@
 mod camera;
 mod color;
+mod material;
 mod rand;
 mod ray;
 mod sphere;
@@ -7,6 +8,7 @@ mod vec3;
 
 use camera::Camera;
 use color::write_color;
+use material::Material;
 use rand::RandomGenerator;
 use ray::Ray;
 use sphere::{HitRecord, Sphere};
@@ -21,13 +23,15 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32, random: &mut RandomGe
         let hit_record = sphere.hit(ray, 0.0001, f64::MAX);
         if hit_record.is_some() {
             let HitRecord {
-                incidence, normal, ..
+                incidence,
+                normal,
+                material,
+                ..
             } = hit_record.unwrap();
 
             // Lambertian diffuse
-            let target = incidence + normal + Vec3::random_unit_sphere(random).normalize();
-            let diffuse_ray = Ray::new(incidence, target - incidence);
-            return 0.5 * ray_color(&diffuse_ray, spheres, depth - 1, random);
+            let (new_ray, color) = material.scatter(ray.direction, incidence, normal, random);
+            return 0.5 * ray_color(&new_ray, spheres, depth - 1, random);
         }
     }
     let unit_direction = ray.direction.normalize();
@@ -48,8 +52,16 @@ fn main() {
     let mut random = RandomGenerator::new(0);
 
     let spheres = vec![
-        Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5),
-        Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0),
+        Sphere::new(
+            Vec3::new(0.0, 0.0, -1.0),
+            0.5,
+            Material::Metal(Vec3::new(0.2, 0.8, 0.4)),
+        ),
+        Sphere::new(
+            Vec3::new(0.0, -100.5, -1.0),
+            100.0,
+            Material::Lambertian(Vec3::new(0.0, 0.2, 0.1)),
+        ),
     ];
 
     println!("P3\n{img_w} {img_h}\n255");

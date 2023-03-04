@@ -18,23 +18,26 @@ impl Vec3 {
     pub fn one() -> Self {
         Self::new(1.0, 1.0, 1.0)
     }
-    pub fn length(&self) -> f64 {
+    pub fn length(self) -> f64 {
         self.length2().sqrt()
     }
-    pub fn length2(&self) -> f64 {
+    pub fn length2(self) -> f64 {
         dot(self, self)
     }
-    pub fn dot(&self, other: &Self) -> f64 {
+    pub fn dot(self, other: Self) -> f64 {
         dot(self, other)
     }
-    pub fn cross(&self, other: &Self) -> Self {
+    pub fn cross(self, other: Self) -> Self {
         cross(self, other)
     }
-    pub fn normalize(&self) -> Self {
-        normalize(*self)
+    pub fn normalize(self) -> Self {
+        normalize(self)
     }
     pub fn normalize_(&mut self) {
         normalize_(self)
+    }
+    pub fn reflect(self, n: Vec3) -> Vec3 {
+        reflect(self, n)
     }
     pub fn random_unit_sphere(random: &mut RandomGenerator) -> Self {
         loop {
@@ -130,11 +133,11 @@ impl DivAssign<f64> for Vec3 {
     }
 }
 
-pub fn dot(u: &Vec3, v: &Vec3) -> f64 {
+pub fn dot(u: Vec3, v: Vec3) -> f64 {
     u.x * v.x + u.y * v.y + u.z * v.z
 }
 
-pub fn cross(u: &Vec3, v: &Vec3) -> Vec3 {
+pub fn cross(u: Vec3, v: Vec3) -> Vec3 {
     Vec3::new(
         u.y * v.z - v.y * u.z,
         u.z * v.x - v.z * u.x,
@@ -145,6 +148,11 @@ pub fn cross(u: &Vec3, v: &Vec3) -> Vec3 {
 pub fn normalize(v: Vec3) -> Vec3 {
     v / v.length()
 }
+
 pub fn normalize_(v: &mut Vec3) {
     *v /= v.length()
+}
+
+pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
+    v - 2.0 * v.dot(n) * n
 }
