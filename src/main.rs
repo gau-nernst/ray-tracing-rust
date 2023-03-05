@@ -58,8 +58,18 @@ fn main() {
     let samples_per_pixel = 100;
     let max_depth = 50;
 
-    let camera = Camera::new(90.0, aspect_ratio);
-    let mut random = RandomGenerator::new(0);
+    let look_from = Vec3::new(3.0, 3.0, 2.0);
+    let look_to = Vec3::new(0.0, 0.0, -1.0);
+    let camera = Camera::new(
+        look_from,
+        look_to,
+        Vec3::new(0.0, 1.0, 0.0),
+        20.0,
+        aspect_ratio,
+        2.0,
+        (look_from - look_to).length(),
+    );
+    let random = &mut RandomGenerator::new(0);
 
     let spheres = vec![
         Sphere::new(
@@ -90,8 +100,8 @@ fn main() {
             for _ in 0..samples_per_pixel {
                 let u = (i as f64 + random.rand()) / img_w as f64;
                 let v = (j as f64 + random.rand()) / img_h as f64;
-                let r = camera.get_ray(u, v);
-                pixel_color += ray_color(&r, &spheres, max_depth, &mut random);
+                let r = camera.get_ray(u, v, random);
+                pixel_color += ray_color(&r, &spheres, max_depth, random);
             }
             pixel_color /= samples_per_pixel as f64;
             write_color(&pixel_color);

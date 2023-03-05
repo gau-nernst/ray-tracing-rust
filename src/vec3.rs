@@ -58,6 +58,18 @@ impl Vec3 {
             }
         }
     }
+    pub fn random_unit_disk(random: &mut RandomGenerator) -> Vec3 {
+        loop {
+            let p = Vec3::new(
+                random.rand_between(-1.0, 1.0),
+                random.rand_between(-1.0, 1.0),
+                0.0,
+            );
+            if p.length2() < 1.0 {
+                return p;
+            }
+        }
+    }
 }
 
 impl Neg for Vec3 {
