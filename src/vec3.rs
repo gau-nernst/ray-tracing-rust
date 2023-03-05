@@ -40,6 +40,12 @@ impl Vec3 {
     pub fn reflect(self, n: Vec3) -> Vec3 {
         self - 2.0 * self.dot(n) * n
     }
+    pub fn refract(self, n: Vec3, eta: f64) -> Vec3 {
+        let cos_theta = f64::min(-self.dot(n), 1.0);
+        let r_out_perp = eta * (self + cos_theta * n);
+        let r_out_para = -(1.0 - r_out_perp.length2()).abs().sqrt() * n;
+        r_out_perp + r_out_para
+    }
     pub fn random_unit_sphere(random: &mut RandomGenerator) -> Vec3 {
         loop {
             let p = Vec3::new(

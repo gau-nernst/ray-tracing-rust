@@ -18,27 +18,37 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32, random: &mut RandomGe
     if depth <= 0 {
         return Vec3::zero();
     }
+    let mut hit_record = HitRecord {
+        t: f64::MAX,
+        incidence: Vec3::zero(),
+        normal: Vec3::zero(),
+        front_face: false,
+        material: Material::None,
+    };
     for sphere in spheres {
         // shadow acne
-        let hit_record = sphere.hit(ray, 0.0001, f64::MAX);
-        if hit_record.is_some() {
-            let HitRecord {
-                incidence,
-                normal,
-                material,
-                ..
-            } = hit_record.unwrap();
-
-            // Lambertian diffuse
-            let (new_ray, color) = material.scatter(ray.direction, incidence, normal, random);
-            return 0.5 * ray_color(&new_ray, spheres, depth - 1, random);
+        let current_hit_record = sphere.hit(ray, 0.0001, hit_record.t);
+        if current_hit_record.is_some() {
+            hit_record = current_hit_record.unwrap();
         }
     }
-    let unit_direction = ray.direction.normalize();
-    let t = 0.5 * (unit_direction.y + 1.0);
-    let white = Vec3::one();
-    let blue = Vec3::new(0.5, 0.7, 1.0);
-    white + t * (blue - white)
+    if hit_record.t < f64::MAX {
+        match hit_record
+            .material
+            .scatter(ray.direction, &hit_record, random)
+        {
+            Some(scatter) => {
+                scatter.attenuation * ray_color(&scatter.ray, spheres, depth - 1, random)
+            }
+            None => Vec3::zero(),
+        }
+    } else {
+        let unit_direction = ray.direction.normalize();
+        let t = 0.5 * (unit_direction.y + 1.0);
+        let white = Vec3::one();
+        let blue = Vec3::new(0.5, 0.7, 1.0);
+        white + t * (blue - white)
+    }
 }
 
 fn main() {
@@ -48,19 +58,26 @@ fn main() {
     let samples_per_pixel = 100;
     let max_depth = 50;
 
-    let camera = Camera::new(aspect_ratio);
+    let camera = Camera::new(90.0, aspect_ratio);
     let mut random = RandomGenerator::new(0);
 
     let spheres = vec![
         Sphere::new(
-            Vec3::new(0.0, 0.0, -1.0),
-            0.5,
-            Material::Metal(Vec3::new(0.2, 0.8, 0.4)),
-        ),
-        Sphere::new(
             Vec3::new(0.0, -100.5, -1.0),
             100.0,
-            Material::Lambertian(Vec3::new(0.0, 0.2, 0.1)),
+            Material::Lambertian(Vec3::new(0.8, 0.8, 0.0)),
+        ),
+        Sphere::new(
+            Vec3::new(0.0, 0.0, -1.0),
+            0.5,
+            Material::Lambertian(Vec3::new(0.1, 0.2, 0.5)),
+        ),
+        Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, Material::Dielectric(1.5)),
+        Sphere::new(Vec3::new(-1.0, 0.0, -1.0), -0.4, Material::Dielectric(1.5)),
+        Sphere::new(
+            Vec3::new(1.0, 0.0, -1.0),
+            0.5,
+            Material::Metal(Vec3::new(0.8, 0.6, 0.2), 0.1),
         ),
     ];
 

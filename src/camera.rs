@@ -1,5 +1,6 @@
 use crate::ray::Ray;
 use crate::vec3::Vec3;
+use std::f64::consts::PI;
 
 pub struct Camera {
     origin: Vec3,
@@ -9,8 +10,10 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f64) -> Self {
-        let viewport_height = 2.0;
+    pub fn new(vfov: f64, aspect_ratio: f64) -> Self {
+        let theta = vfov * PI / 180.0;
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h;
         let viewport_width = viewport_height * aspect_ratio;
         let focal_length = 1.0;
 
