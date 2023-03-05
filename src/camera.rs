@@ -1,4 +1,3 @@
-use crate::rand::RandomGenerator;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
 use std::f64::consts::PI;
@@ -50,8 +49,8 @@ impl Camera {
             lens_radius: aperture / 2.0,
         }
     }
-    pub fn get_ray(&self, s: f64, t: f64, random: &mut RandomGenerator) -> Ray {
-        let rd = self.lens_radius * Vec3::random_unit_disk(random);
+    pub fn get_ray(&self, s: f64, t: f64) -> Ray {
+        let rd = self.lens_radius * Vec3::random_unit_disk();
         let offset = self.u * rd.x + self.v * rd.y;
         Ray::new(
             self.origin + offset,

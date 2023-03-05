@@ -1,7 +1,7 @@
-use crate::rand::RandomGenerator;
 use crate::ray::Ray;
 use crate::sphere::HitRecord;
 use crate::vec3::Vec3;
+use rand::prelude::*;
 
 pub struct ScatterResult {
     pub ray: Ray,
@@ -23,15 +23,10 @@ pub enum Material {
 }
 
 impl Material {
-    pub fn scatter(
-        &self,
-        incident: Vec3,
-        hit_record: &HitRecord,
-        random: &mut RandomGenerator,
-    ) -> Option<ScatterResult> {
+    pub fn scatter(&self, incident: Vec3, hit_record: &HitRecord) -> Option<ScatterResult> {
         let scatter_color = match self {
             Material::Lambertian(color) => {
-                let mut diffuse = hit_record.normal + Vec3::random_unit_sphere(random).normalize();
+                let mut diffuse = hit_record.normal + Vec3::random_unit_sphere().normalize();
                 // catch degenerate scatter direction
                 if diffuse.length2() < 1e-16 {
                     diffuse = hit_record.normal;
@@ -44,7 +39,7 @@ impl Material {
                 match incident.dot(hit_record.normal) < 0.0 {
                     true => {
                         let reflected = incident.reflect(hit_record.normal)
-                            + Vec3::random_unit_sphere(random) * fuzz.to_owned();
+                            + Vec3::random_unit_sphere() * fuzz.to_owned();
                         Some((reflected, color.to_owned()))
                     }
                     false => None,
@@ -61,7 +56,7 @@ impl Material {
                 let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
                 let refracted = match (eta * sin_theta <= 1.0)
-                    && (schlick_reflectance(cos_theta, eta) < random.rand())
+                    && (schlick_reflectance(cos_theta, eta) < random())
                 {
                     true => incident_norm.refract(hit_record.normal, eta),
                     false => incident_norm.reflect(hit_record.normal), // total internal reflection

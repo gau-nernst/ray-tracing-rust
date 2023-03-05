@@ -1,7 +1,6 @@
 mod camera;
 mod color;
 mod material;
-mod rand;
 mod ray;
 mod sphere;
 mod vec3;
@@ -9,12 +8,12 @@ mod vec3;
 use camera::Camera;
 use color::write_color;
 use material::Material;
-use rand::RandomGenerator;
+use rand::prelude::*;
 use ray::Ray;
 use sphere::{HitRecord, Sphere};
 use vec3::Vec3;
 
-fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32, random: &mut RandomGenerator) -> Vec3 {
+fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
     if depth <= 0 {
         return Vec3::zero();
     }
@@ -33,13 +32,8 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32, random: &mut RandomGe
         }
     }
     if hit_record.t < f64::MAX {
-        match hit_record
-            .material
-            .scatter(ray.direction, &hit_record, random)
-        {
-            Some(scatter) => {
-                scatter.attenuation * ray_color(&scatter.ray, spheres, depth - 1, random)
-            }
+        match hit_record.material.scatter(ray.direction, &hit_record) {
+            Some(scatter) => scatter.attenuation * ray_color(&scatter.ray, spheres, depth - 1),
             None => Vec3::zero(),
         }
     } else {
@@ -51,45 +45,70 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32, random: &mut RandomGe
     }
 }
 
+fn generate_spheres() -> Vec<Sphere> {
+    let mut spheres = vec![
+        Sphere::new(
+            Vec3::new(0.0, -1000.0, 0.0),
+            1000.0,
+            Material::Lambertian(Vec3::new(0.5, 0.5, 0.5)),
+        ),
+        Sphere::new(Vec3::new(0.0, 1.0, 0.0), 1.0, Material::Dielectric(1.5)),
+        Sphere::new(
+            Vec3::new(-4.0, 1.0, 0.0),
+            1.0,
+            Material::Lambertian(Vec3::new(0.4, 0.2, 0.1)),
+        ),
+        Sphere::new(
+            Vec3::new(4.0, 1.0, 0.0),
+            1.0,
+            Material::Metal(Vec3::new(0.7, 0.6, 0.5), 0.0),
+        ),
+    ];
+    for a in -11..11 {
+        for b in -11..11 {
+            let center = Vec3::new(
+                a as f64 + 0.9 * random::<f64>(),
+                0.2,
+                b as f64 + 0.9 * random::<f64>(),
+            );
+            if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                let material;
+                let choose_mat = random::<f64>();
+                if choose_mat < 0.8 {
+                    material = Material::Lambertian(Vec3::rand() * Vec3::rand());
+                } else if choose_mat < 0.95 {
+                    material = Material::Metal(
+                        Vec3::rand_between(0.5, 1.0),
+                        thread_rng().gen_range(0.0..0.5),
+                    )
+                } else {
+                    material = Material::Dielectric(1.5);
+                }
+                spheres.push(Sphere::new(center, 0.2, material));
+            }
+        }
+    }
+    spheres
+}
+
 fn main() {
-    let aspect_ratio = 16.0 / 9.0;
+    let aspect_ratio = 3.0 / 2.0;
     let img_w = 400;
     let img_h = (img_w as f64 / aspect_ratio) as i32;
     let samples_per_pixel = 100;
     let max_depth = 50;
 
-    let look_from = Vec3::new(3.0, 3.0, 2.0);
-    let look_to = Vec3::new(0.0, 0.0, -1.0);
     let camera = Camera::new(
-        look_from,
-        look_to,
+        Vec3::new(13.0, 2.0, 3.0),
+        Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
         20.0,
         aspect_ratio,
-        2.0,
-        (look_from - look_to).length(),
+        0.1,
+        10.0,
     );
-    let random = &mut RandomGenerator::new(0);
 
-    let spheres = vec![
-        Sphere::new(
-            Vec3::new(0.0, -100.5, -1.0),
-            100.0,
-            Material::Lambertian(Vec3::new(0.8, 0.8, 0.0)),
-        ),
-        Sphere::new(
-            Vec3::new(0.0, 0.0, -1.0),
-            0.5,
-            Material::Lambertian(Vec3::new(0.1, 0.2, 0.5)),
-        ),
-        Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, Material::Dielectric(1.5)),
-        Sphere::new(Vec3::new(-1.0, 0.0, -1.0), -0.4, Material::Dielectric(1.5)),
-        Sphere::new(
-            Vec3::new(1.0, 0.0, -1.0),
-            0.5,
-            Material::Metal(Vec3::new(0.8, 0.6, 0.2), 0.1),
-        ),
-    ];
+    let spheres = generate_spheres();
 
     println!("P3\n{img_w} {img_h}\n255");
 
@@ -98,10 +117,10 @@ fn main() {
         for i in 0..img_w {
             let mut pixel_color = Vec3::zero();
             for _ in 0..samples_per_pixel {
-                let u = (i as f64 + random.rand()) / img_w as f64;
-                let v = (j as f64 + random.rand()) / img_h as f64;
-                let r = camera.get_ray(u, v, random);
-                pixel_color += ray_color(&r, &spheres, max_depth, random);
+                let u = (i as f64 + random::<f64>()) / img_w as f64;
+                let v = (j as f64 + random::<f64>()) / img_h as f64;
+                let r = camera.get_ray(u, v);
+                pixel_color += ray_color(&r, &spheres, max_depth);
             }
             pixel_color /= samples_per_pixel as f64;
             write_color(&pixel_color);

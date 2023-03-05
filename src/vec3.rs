@@ -1,4 +1,4 @@
-use crate::rand::RandomGenerator;
+use rand::prelude::*;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy)]
@@ -46,25 +46,30 @@ impl Vec3 {
         let r_out_para = -(1.0 - r_out_perp.length2()).abs().sqrt() * n;
         r_out_perp + r_out_para
     }
-    pub fn random_unit_sphere(random: &mut RandomGenerator) -> Vec3 {
+    pub fn rand() -> Vec3 {
+        let (x, y, z) = random();
+        Vec3::new(x, y, z)
+    }
+    pub fn rand_between(min: f64, max: f64) -> Vec3 {
+        let mut rng = thread_rng();
+        Vec3::new(
+            rng.gen_range(min..max),
+            rng.gen_range(min..max),
+            rng.gen_range(min..max),
+        )
+    }
+    pub fn random_unit_sphere() -> Vec3 {
         loop {
-            let p = Vec3::new(
-                random.rand_between(-1.0, 1.0),
-                random.rand_between(-1.0, 1.0),
-                random.rand_between(-1.0, 1.0),
-            );
+            let p = Vec3::rand_between(-1.0, 1.0);
             if p.length2() < 1.0 {
                 return p;
             }
         }
     }
-    pub fn random_unit_disk(random: &mut RandomGenerator) -> Vec3 {
+    pub fn random_unit_disk() -> Vec3 {
         loop {
-            let p = Vec3::new(
-                random.rand_between(-1.0, 1.0),
-                random.rand_between(-1.0, 1.0),
-                0.0,
-            );
+            let (x, y) = random();
+            let p = Vec3::new(x, y, 0.0);
             if p.length2() < 1.0 {
                 return p;
             }
