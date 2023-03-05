@@ -29,17 +29,14 @@ impl Material {
         hit_record: &HitRecord,
         random: &mut RandomGenerator,
     ) -> Option<ScatterResult> {
-        match self {
+        let scatter_color = match self {
             Material::Lambertian(color) => {
                 let mut diffuse = hit_record.normal + Vec3::random_unit_sphere(random).normalize();
                 // catch degenerate scatter direction
                 if diffuse.length2() < 1e-16 {
                     diffuse = hit_record.normal;
                 }
-                Some(ScatterResult::new(
-                    Ray::new(hit_record.incidence, diffuse),
-                    color.to_owned(),
-                ))
+                Some((diffuse, color.to_owned()))
             }
 
             Material::Metal(color, fuzz) => {
@@ -48,10 +45,7 @@ impl Material {
                     true => {
                         let reflected = incident.reflect(hit_record.normal)
                             + Vec3::random_unit_sphere(random) * fuzz.to_owned();
-                        Some(ScatterResult::new(
-                            Ray::new(hit_record.incidence, reflected),
-                            color.to_owned(),
-                        ))
+                        Some((reflected, color.to_owned()))
                     }
                     false => None,
                 }
@@ -73,13 +67,18 @@ impl Material {
                     false => incident_norm.reflect(hit_record.normal), // total internal reflection
                 };
 
-                Some(ScatterResult::new(
-                    Ray::new(hit_record.incidence, refracted),
-                    Vec3::one(),
-                ))
+                Some((refracted, Vec3::one()))
             }
 
             Material::None => None,
+        };
+
+        match scatter_color {
+            Some((scatter, color)) => Some(ScatterResult::new(
+                Ray::new(hit_record.incidence, scatter),
+                color,
+            )),
+            None => None,
         }
     }
 }
