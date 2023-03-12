@@ -10,38 +10,51 @@ use color::write_color;
 use material::Material;
 use rand::prelude::*;
 use ray::Ray;
-use sphere::{HitRecord, Sphere};
+use sphere::Sphere;
 use vec3::Vec3;
+
+fn hit_spheres(ray: &Ray, spheres: &Vec<Sphere>) -> (usize, f64) {
+    let mut sphere_idx = 0;
+    let mut t_max = f64::MAX;
+    for (idx, sphere) in spheres.iter().enumerate() {
+        let t = sphere.hit(ray, 0.0001, t_max);
+        if t < t_max {
+            sphere_idx = idx;
+            t_max = t;
+        }
+    }
+    (sphere_idx, t_max)
+}
 
 fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
     if depth <= 0 {
         return Vec3::zero();
     }
-    let mut hit_record = HitRecord {
-        t: f64::MAX,
-        incidence: Vec3::zero(),
-        normal: Vec3::zero(),
-        front_face: false,
-        material: Material::None,
-    };
-    for sphere in spheres {
-        // shadow acne
-        let current_hit_record = sphere.hit(ray, 0.0001, hit_record.t);
-        if current_hit_record.is_some() {
-            hit_record = current_hit_record.unwrap();
-        }
-    }
-    if hit_record.t < f64::MAX {
-        match hit_record.material.scatter(ray.direction, &hit_record) {
-            Some(scatter) => scatter.attenuation * ray_color(&scatter.ray, spheres, depth - 1),
-            None => Vec3::zero(),
-        }
-    } else {
+    let (sphere_idx, t) = hit_spheres(ray, spheres);
+
+    if t == f64::MAX {
         let unit_direction = ray.direction.normalize();
         let t = 0.5 * (unit_direction.y + 1.0);
-        let white = Vec3::one();
-        let blue = Vec3::new(0.5, 0.7, 1.0);
-        white + t * (blue - white)
+        let color1 = Vec3::one();
+        let color2 = Vec3::new(0.5, 0.7, 1.0);
+        return color1 + t * (color2 - color1);
+    }
+
+    let ref sphere = spheres[sphere_idx];
+    let incidence = ray.at(t);
+    let outward_normal = (incidence - sphere.center) / sphere.radius;
+    let front_face = ray.direction.dot(&outward_normal) < 0.0;
+    let normal = match front_face {
+        true => outward_normal,
+        false => -outward_normal,
+    };
+
+    match sphere.material.scatter(&ray.direction, &normal, front_face) {
+        Some((scatter, color)) => {
+            let scatter_ray = Ray::new(incidence, scatter);
+            color * ray_color(&scatter_ray, spheres, depth - 1)
+        }
+        None => Vec3::zero(),
     }
 }
 
@@ -64,6 +77,7 @@ fn generate_spheres() -> Vec<Sphere> {
             Material::Metal(Vec3::new(0.7, 0.6, 0.5), 0.0),
         ),
     ];
+    let something = Vec3::new(4.0, 0.2, 0.0);
     for a in -11..11 {
         for b in -11..11 {
             let center = Vec3::new(
@@ -71,11 +85,11 @@ fn generate_spheres() -> Vec<Sphere> {
                 0.2,
                 b as f64 + 0.9 * random::<f64>(),
             );
-            if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+            if (center - something).length() > 0.9 {
                 let material;
                 let choose_mat = random::<f64>();
                 if choose_mat < 0.8 {
-                    material = Material::Lambertian(Vec3::rand() * Vec3::rand());
+                    material = Material::Lambertian(&Vec3::rand() * &Vec3::rand());
                 } else if choose_mat < 0.95 {
                     material = Material::Metal(
                         Vec3::rand_between(0.5, 1.0),
@@ -117,12 +131,13 @@ fn main() {
         for i in 0..img_w {
             let mut pixel_color = Vec3::zero();
             for _ in 0..samples_per_pixel {
-                let u = (i as f64 + random::<f64>()) / img_w as f64;
-                let v = (j as f64 + random::<f64>()) / img_h as f64;
+                let (offset_x, offset_y): (f64, f64) = random();
+                let u = (i as f64 + offset_x) / img_w as f64;
+                let v = (j as f64 + offset_y) / img_h as f64;
                 let r = camera.get_ray(u, v);
-                pixel_color += ray_color(&r, &spheres, max_depth);
+                pixel_color = pixel_color + ray_color(&r, &spheres, max_depth);
             }
-            pixel_color /= samples_per_pixel as f64;
+            pixel_color = pixel_color / (samples_per_pixel as f64);
             write_color(&pixel_color);
         }
     }

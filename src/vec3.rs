@@ -1,5 +1,5 @@
 use rand::prelude::*;
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vec3 {
@@ -84,53 +84,72 @@ impl Neg for Vec3 {
     }
 }
 
-macro_rules! impl_op_f64 {
-    ($t:ty, $tr:ident, $method:ident) => {
-        impl $tr<f64> for $t {
+macro_rules! expand {
+    ($token:tt, $attr:ident, "vec3") => {
+        $token.$attr
+    };
+    ($token:tt, $attr:ident, "f64") => {
+        $token
+    };
+}
+
+macro_rules! impl_binary_op {
+    ($trait:ident, $method:ident) => {
+        impl_binary_op!(Vec3, $trait, $method);
+        impl_binary_op!(&Vec3, $trait, $method);
+    };
+
+    ($type:ty, $trait:ident, $method:ident) => {
+        impl_binary_op!($type, "vec3", Vec3, "vec3", $trait, $method);
+        impl_binary_op!($type, "vec3", &Vec3, "vec3", $trait, $method);
+
+        impl_binary_op!($type, "vec3", f64, "f64", $trait, $method);
+        impl_binary_op!($type, "vec3", &f64, "f64", $trait, $method);
+
+        impl_binary_op!(f64, "f64", $type, "vec3", $trait, $method);
+        impl_binary_op!(&f64, "f64", $type, "vec3", $trait, $method);
+    };
+
+    ($type1:ty, $expand1:tt, $type2:ty, $expand2:tt, $trait:ident, $method:ident) => {
+        impl $trait<$type2> for $type1 {
             type Output = Vec3;
-            fn $method(self, rhs: f64) -> Vec3 {
+            fn $method(self, rhs: $type2) -> Vec3 {
                 Vec3::new(
-                    self.x.$method(rhs),
-                    self.y.$method(rhs),
-                    self.z.$method(rhs),
-                )
-            }
-        }
-        impl $tr<$t> for f64 {
-            type Output = Vec3;
-            fn $method(self, rhs: $t) -> Vec3 {
-                Vec3::new(
-                    self.$method(rhs.x),
-                    self.$method(rhs.y),
-                    self.$method(rhs.z),
+                    expand!(self, x, $expand1).$method(expand!(rhs, x, $expand2)),
+                    expand!(self, y, $expand1).$method(expand!(rhs, y, $expand2)),
+                    expand!(self, z, $expand1).$method(expand!(rhs, z, $expand2)),
                 )
             }
         }
     };
 }
-macro_rules! impl_op {
-    ($t:ty, $tr:ident, $method:ident) => {
-        impl_op!($t, $t, $tr, $method);
-        impl_op!($t, &$t, $tr, $method);
-        impl_op!(&$t, $t, $tr, $method);
-        impl_op!(&$t, &$t, $tr, $method);
-        impl_op_f64!($t, $tr, $method);
-        impl_op_f64!(&$t, $tr, $method);
+
+impl_binary_op!(Add, add);
+impl_binary_op!(Sub, sub);
+impl_binary_op!(Mul, mul);
+impl_binary_op!(Div, div);
+
+macro_rules! impl_assign_op {
+    ($trait:ident, $method:ident) => {
+        impl_assign_op!(Vec3, "vec3", $trait, $method);
+        impl_assign_op!(&Vec3, "vec3", $trait, $method);
+
+        impl_assign_op!(f64, "f64", $trait, $method);
+        impl_assign_op!(&f64, "f64", $trait, $method);
     };
-    ($t1:ty, $t2:ty, $tr:ident, $method:ident) => {
-        impl $tr<$t2> for $t1 {
-            type Output = Vec3;
-            fn $method(self, rhs: $t2) -> Vec3 {
-                Vec3::new(
-                    self.x.$method(rhs.x),
-                    self.y.$method(rhs.y),
-                    self.z.$method(rhs.z),
-                )
+
+    ($type:ty, $expand:tt, $trait:ident, $method:ident) => {
+        impl $trait<$type> for Vec3 {
+            fn $method(&mut self, rhs: $type) {
+                self.x.$method(expand!(rhs, x, $expand));
+                self.y.$method(expand!(rhs, y, $expand));
+                self.z.$method(expand!(rhs, z, $expand));
             }
         }
     };
 }
-impl_op!(Vec3, Add, add);
-impl_op!(Vec3, Sub, sub);
-impl_op!(Vec3, Mul, mul);
-impl_op!(Vec3, Div, div);
+
+impl_assign_op!(AddAssign, add_assign);
+impl_assign_op!(SubAssign, sub_assign);
+impl_assign_op!(MulAssign, mul_assign);
+impl_assign_op!(DivAssign, div_assign);

@@ -2,14 +2,6 @@ use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
 
-pub struct HitRecord {
-    pub t: f64,
-    pub incidence: Vec3,
-    pub normal: Vec3,
-    pub front_face: bool,
-    pub material: Material,
-}
-
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f64,
@@ -24,39 +16,27 @@ impl Sphere {
             material,
         }
     }
-    pub fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    pub fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> f64 {
         let oc = ray.origin - self.center;
         let a = ray.direction.length2();
-        let half_b = oc.dot(ray.direction);
+        let half_b = oc.dot(&ray.direction);
         let c = oc.length2() - self.radius * self.radius;
         let discriminant = half_b * half_b - a * c;
 
         if discriminant < 0.0 {
-            return None;
+            return f64::MAX;
         }
 
         let disc_sqrt = discriminant.sqrt();
-        let mut root = (-half_b - disc_sqrt) / a;
-        if root < t_min || root > t_max {
-            root = (-half_b + disc_sqrt) / a;
-            if root < t_min || root > t_max {
-                return None;
-            }
+        let root = (-half_b - disc_sqrt) / a;
+        if t_min < root && root < t_max {
+            return root;
+        }
+        let root = (-half_b + disc_sqrt) / a;
+        if t_min < root && root < t_max {
+            return root;
         }
 
-        let incidence = ray.at(root);
-        let outward_normal = (incidence - self.center) / self.radius;
-        let front_face = ray.direction.dot(outward_normal) < 0.0;
-        let normal = match front_face {
-            true => outward_normal,
-            false => -outward_normal,
-        };
-        return Some(HitRecord {
-            t: root,
-            incidence,
-            normal,
-            front_face,
-            material: self.material,
-        });
+        return f64::MAX;
     }
 }

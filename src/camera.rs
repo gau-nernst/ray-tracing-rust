@@ -22,15 +22,15 @@ impl Camera {
         aspect_ratio: f64,
         aperture: f64,
         focus_distance: f64,
-    ) -> Self {
+    ) -> Camera {
         let theta = vfov * PI / 180.0;
         let h = (theta / 2.0).tan();
         let viewport_height = 2.0 * h;
         let viewport_width = viewport_height * aspect_ratio;
 
         let w = (look_from - look_at).normalize();
-        let u = vup.cross(w).normalize();
-        let v = w.cross(u);
+        let u = vup.cross(&w).normalize();
+        let v = w.cross(&u);
 
         // NOTE: camera pointing in negative z direction
         let origin = look_from;
@@ -38,7 +38,7 @@ impl Camera {
         let vertical = focus_distance * viewport_height * v;
         let lower_left_corner = origin - 0.5 * horizontal - 0.5 * vertical - focus_distance * w;
 
-        Self {
+        Camera {
             origin,
             lower_left_corner,
             horizontal,
