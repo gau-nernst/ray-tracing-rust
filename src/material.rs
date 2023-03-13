@@ -14,7 +14,7 @@ impl Material {
         incident: &Vec3,
         normal: &Vec3,
         front_face: bool,
-    ) -> Option<(Vec3, Vec3)> {
+    ) -> Option<(Vec3, &Vec3)> {
         match self {
             Material::Lambertian(albedo) => {
                 let mut diffuse = normal + Vec3::random_unit_sphere().normalize();
@@ -22,7 +22,7 @@ impl Material {
                 if diffuse.length2() < 1e-16 {
                     diffuse = *normal;
                 }
-                Some((diffuse, *albedo))
+                Some((diffuse, albedo))
             }
 
             Material::Metal(albedo, fuzz) => {
@@ -31,7 +31,7 @@ impl Material {
                     return None;
                 }
                 let reflected = incident.reflect(normal) + Vec3::random_unit_sphere() * fuzz;
-                Some((reflected, *albedo))
+                Some((reflected, albedo))
             }
 
             Material::Dielectric(eta) => {
@@ -49,7 +49,7 @@ impl Material {
                     true => incident_norm.refract(normal, eta),
                     false => incident_norm.reflect(normal), // total internal reflection
                 };
-                Some((refracted, Vec3::zero()))
+                Some((refracted, &Vec3::ZERO))
             }
         }
     }

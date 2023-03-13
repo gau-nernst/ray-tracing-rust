@@ -9,6 +9,11 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
+    pub const ZERO: Vec3 = Vec3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
     pub fn new(x: f64, y: f64, z: f64) -> Vec3 {
         Vec3 { x, y, z }
     }

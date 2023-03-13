@@ -5,6 +5,8 @@ mod ray;
 mod sphere;
 mod vec3;
 
+use std::time::Instant;
+
 use camera::Camera;
 use color::write_color;
 use material::Material;
@@ -89,7 +91,7 @@ fn generate_spheres() -> Vec<Sphere> {
                 let material;
                 let choose_mat = random::<f64>();
                 if choose_mat < 0.8 {
-                    material = Material::Lambertian(&Vec3::rand() * &Vec3::rand());
+                    material = Material::Lambertian(Vec3::rand() * Vec3::rand());
                 } else if choose_mat < 0.95 {
                     material = Material::Metal(
                         Vec3::rand_between(0.5, 1.0),
@@ -125,6 +127,7 @@ fn main() {
     let spheres = generate_spheres();
 
     println!("P3\n{img_w} {img_h}\n255");
+    let now = Instant::now();
 
     for j in (0..img_h).rev() {
         eprint!("\rScanlines remaining: {j} ");
@@ -135,11 +138,14 @@ fn main() {
                 let u = (i as f64 + offset_x) / img_w as f64;
                 let v = (j as f64 + offset_y) / img_h as f64;
                 let r = camera.get_ray(u, v);
-                pixel_color = pixel_color + ray_color(&r, &spheres, max_depth);
+                pixel_color += ray_color(&r, &spheres, max_depth);
             }
-            pixel_color = pixel_color / (samples_per_pixel as f64);
+            pixel_color /= samples_per_pixel as f64;
             write_color(&pixel_color);
         }
     }
-    eprintln!("\nDone.")
+
+    eprintln!("\nDone.");
+    let elapsed_time = now.elapsed();
+    eprintln!("{} seconds.", elapsed_time.as_secs());
 }
