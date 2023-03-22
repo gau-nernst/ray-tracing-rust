@@ -51,14 +51,13 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
         false => -outward_normal,
     };
 
-    let scatter_color = sphere.material.scatter(&ray.direction, &normal, front_face);
-    if scatter_color.is_none() {
-        return Vec3::zero();
+    match sphere.material.scatter(&ray.direction, &normal, front_face) {
+        None => Vec3::zero(),
+        Some((scatter, color)) => {
+            let scatter_ray = Ray::new(incidence, scatter);
+            color * ray_color(&scatter_ray, spheres, depth - 1)
+        }
     }
-
-    let (scatter, color) = scatter_color.unwrap();
-    let scatter_ray = Ray::new(incidence, scatter);
-    color * ray_color(&scatter_ray, spheres, depth - 1)
 }
 
 fn generate_spheres() -> Vec<Sphere> {
@@ -110,10 +109,11 @@ fn generate_spheres() -> Vec<Sphere> {
 
 fn main() {
     let aspect_ratio = 3.0 / 2.0;
-    let img_w = 400;
-    let img_h = (img_w as f64 / aspect_ratio) as u32;
+    let img_width = 400;
+    let img_height = (img_width as f64 / aspect_ratio) as u32;
     let samples_per_pixel = 100;
     let max_depth = 50;
+    let save_path = "sample.tiff";
 
     let camera = Camera::new(
         Vec3::new(13.0, 2.0, 3.0),
@@ -127,17 +127,17 @@ fn main() {
 
     let spheres = generate_spheres();
 
-    let mut tiff_file = TiffFile::new(&"sample.tiff", img_w, img_h);
+    let mut tiff_file = TiffFile::new(save_path, img_width, img_height);
     let now = Instant::now();
 
-    for j in (0..img_h).rev() {
+    for j in (0..img_height).rev() {
         eprint!("\rScanlines remaining: {j} ");
-        for i in 0..img_w {
+        for i in 0..img_width {
             let mut pixel_color = Vec3::zero();
             for _ in 0..samples_per_pixel {
                 let (offset_x, offset_y): (f64, f64) = random();
-                let u = (i as f64 + offset_x) / img_w as f64;
-                let v = (j as f64 + offset_y) / img_h as f64;
+                let u = (i as f64 + offset_x) / img_width as f64;
+                let v = (j as f64 + offset_y) / img_height as f64;
                 let r = camera.get_ray(u, v);
                 pixel_color += ray_color(&r, &spheres, max_depth);
             }
