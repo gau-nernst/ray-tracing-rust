@@ -8,7 +8,7 @@ mod vec3;
 use std::time::Instant;
 
 use camera::Camera;
-use color::write_color;
+use color::TiffFile;
 use material::Material;
 use rand::prelude::*;
 use ray::Ray;
@@ -51,13 +51,14 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
         false => -outward_normal,
     };
 
-    match sphere.material.scatter(&ray.direction, &normal, front_face) {
-        Some((scatter, color)) => {
-            let scatter_ray = Ray::new(incidence, scatter);
-            color * ray_color(&scatter_ray, spheres, depth - 1)
-        }
-        None => Vec3::zero(),
+    let scatter_color = sphere.material.scatter(&ray.direction, &normal, front_face);
+    if scatter_color.is_none() {
+        return Vec3::zero();
     }
+
+    let (scatter, color) = scatter_color.unwrap();
+    let scatter_ray = Ray::new(incidence, scatter);
+    color * ray_color(&scatter_ray, spheres, depth - 1)
 }
 
 fn generate_spheres() -> Vec<Sphere> {
@@ -110,7 +111,7 @@ fn generate_spheres() -> Vec<Sphere> {
 fn main() {
     let aspect_ratio = 3.0 / 2.0;
     let img_w = 400;
-    let img_h = (img_w as f64 / aspect_ratio) as i32;
+    let img_h = (img_w as f64 / aspect_ratio) as u32;
     let samples_per_pixel = 100;
     let max_depth = 50;
 
@@ -126,7 +127,7 @@ fn main() {
 
     let spheres = generate_spheres();
 
-    println!("P3\n{img_w} {img_h}\n255");
+    let mut tiff_file = TiffFile::new(&"sample.tiff", img_w, img_h);
     let now = Instant::now();
 
     for j in (0..img_h).rev() {
@@ -141,7 +142,7 @@ fn main() {
                 pixel_color += ray_color(&r, &spheres, max_depth);
             }
             pixel_color /= samples_per_pixel as f64;
-            write_color(&pixel_color);
+            tiff_file.write_image_data(&pixel_color);
         }
     }
 
