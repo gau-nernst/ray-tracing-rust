@@ -1,18 +1,18 @@
 mod camera;
-mod color;
 mod material;
 mod ray;
 mod sphere;
+mod tiff;
 mod vec3;
 
 use std::time::Instant;
 
 use camera::Camera;
-use color::TiffFile;
 use material::Material;
 use rand::prelude::*;
 use ray::Ray;
 use sphere::Sphere;
+use tiff::TiffFile;
 use vec3::Vec3;
 
 fn hit_spheres(ray: &Ray, spheres: &Vec<Sphere>) -> (usize, f64) {
