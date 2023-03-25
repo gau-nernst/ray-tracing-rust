@@ -118,6 +118,8 @@ fn main() {
     let max_depth = 50;
     let save_path = "sample.tiff";
 
+    random::seed_current_time();
+
     let camera = Camera::new(
         Vec3::new(13.0, 2.0, 3.0),
         Vec3::new(0.0, 0.0, 0.0),

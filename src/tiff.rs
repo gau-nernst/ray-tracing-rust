@@ -14,6 +14,7 @@ impl FieldType {
 
 struct Tag;
 
+#[allow(non_upper_case_globals)]
 impl Tag {
     const ImageWidth: u16 = 0x100;
     const ImageLength: u16 = 0x101;

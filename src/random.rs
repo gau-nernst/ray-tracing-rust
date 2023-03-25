@@ -1,8 +1,13 @@
-static mut _SEED: u64 = 2023;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn seed(seed: u64) {
+static mut STATE: u64 = 2023;
+
+pub fn seed_current_time() {
     unsafe {
-        _SEED = seed;
+        STATE = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
     }
 }
 
@@ -18,8 +23,8 @@ pub fn rand_between(min: f64, max: f64) -> f64 {
 fn wyrand() -> u64 {
     let t;
     unsafe {
-        _SEED += 0xa0761d6478bd642f;
-        t = (_SEED as u128) * ((_SEED ^ 0xe7037ed1a0b428db) as u128);
+        STATE += 0xa0761d6478bd642f;
+        t = (STATE as u128) * ((STATE ^ 0xe7037ed1a0b428db) as u128);
     }
     ((t >> 64) as u64) ^ (t as u64)
 }
