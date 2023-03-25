@@ -1,5 +1,6 @@
 mod camera;
 mod material;
+mod random;
 mod ray;
 mod sphere;
 mod tiff;
@@ -9,7 +10,6 @@ use std::time::Instant;
 
 use camera::Camera;
 use material::Material;
-use rand::prelude::*;
 use ray::Ray;
 use sphere::Sphere;
 use tiff::TiffFile;
@@ -83,20 +83,17 @@ fn generate_spheres() -> Vec<Sphere> {
     for a in -11..11 {
         for b in -11..11 {
             let center = Vec3::new(
-                a as f64 + 0.9 * random::<f64>(),
+                a as f64 + 0.9 * random::rand(),
                 0.2,
-                b as f64 + 0.9 * random::<f64>(),
+                b as f64 + 0.9 * random::rand(),
             );
             if (center - something).length() > 0.9 {
                 let material;
-                let choose_mat = random::<f64>();
+                let choose_mat = random::rand();
                 if choose_mat < 0.8 {
                     material = Material::Lambertian(Vec3::rand() * Vec3::rand());
                 } else if choose_mat < 0.95 {
-                    material = Material::Metal(
-                        Vec3::rand_between(0.5, 1.0),
-                        thread_rng().gen_range(0.0..0.5),
-                    )
+                    material = Material::Metal(Vec3::rand_between(0.5, 1.0), random::rand() * 0.5)
                 } else {
                     material = Material::Dielectric(1.5);
                 }
@@ -135,9 +132,8 @@ fn main() {
         for i in 0..img_width {
             let mut pixel_color = Vec3::zero();
             for _ in 0..samples_per_pixel {
-                let (offset_x, offset_y): (f64, f64) = random();
-                let u = (i as f64 + offset_x) / img_width as f64;
-                let v = (j as f64 + offset_y) / img_height as f64;
+                let u = (i as f64 + random::rand()) / img_width as f64;
+                let v = (j as f64 + random::rand()) / img_height as f64;
                 let r = camera.get_ray(u, v);
                 pixel_color += ray_color(&r, &spheres, max_depth);
             }

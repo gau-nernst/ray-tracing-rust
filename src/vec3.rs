@@ -1,4 +1,4 @@
-use rand::prelude::*;
+use crate::random;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Debug, Clone, Copy)]
@@ -52,15 +52,13 @@ impl Vec3 {
         r_out_perp + r_out_para
     }
     pub fn rand() -> Vec3 {
-        let (x, y, z) = random();
-        Vec3::new(x, y, z)
+        Vec3::new(random::rand(), random::rand(), random::rand())
     }
     pub fn rand_between(min: f64, max: f64) -> Vec3 {
-        let mut rng = thread_rng();
         Vec3::new(
-            rng.gen_range(min..max),
-            rng.gen_range(min..max),
-            rng.gen_range(min..max),
+            random::rand_between(min, max),
+            random::rand_between(min, max),
+            random::rand_between(min, max),
         )
     }
     pub fn random_unit_sphere() -> Vec3 {
@@ -73,8 +71,7 @@ impl Vec3 {
     }
     pub fn random_unit_disk() -> Vec3 {
         loop {
-            let (x, y) = random();
-            let p = Vec3::new(x, y, 0.0);
+            let p = Vec3::new(random::rand(), random::rand(), 0.0);
             if p.length2() < 1.0 {
                 return p;
             }

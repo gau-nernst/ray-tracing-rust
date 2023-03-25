@@ -1,5 +1,5 @@
+use crate::random;
 use crate::vec3::Vec3;
-use rand::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Material {
@@ -44,7 +44,7 @@ impl Material {
                 let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
                 let refracted = match (eta * sin_theta <= 1.0)
-                    && (schlick_reflectance(cos_theta, eta) < random())
+                    && (schlick_reflectance(cos_theta, eta) < random::rand())
                 {
                     true => incident_norm.refract(normal, eta),
                     false => incident_norm.reflect(normal), // total internal reflection
