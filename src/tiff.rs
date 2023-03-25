@@ -1,6 +1,5 @@
 // A simple implementation of TIFF Baseline encoder, no compression, single strip
 
-use crate::vec3::Vec3;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -48,22 +47,26 @@ impl TiffFile {
         tiff_file
     }
 
+    pub fn write(&mut self, buf: &[u8]) {
+        self.f.write(buf).unwrap();
+    }
+
     fn write_field(&mut self, tag: u16, field_type: u16, count: u32, value: u32) {
-        self.f.write(&tag.to_le_bytes()).unwrap();
-        self.f.write(&field_type.to_le_bytes()).unwrap();
-        self.f.write(&count.to_le_bytes()).unwrap();
-        self.f.write(&value.to_le_bytes()).unwrap();
+        self.write(&tag.to_le_bytes());
+        self.write(&field_type.to_le_bytes());
+        self.write(&count.to_le_bytes());
+        self.write(&value.to_le_bytes());
     }
 
     fn write_header(&mut self) {
-        self.f.write(b"II").unwrap();
-        self.f.write(&[42, 0, 8, 0, 0, 0]).unwrap();
+        self.write(b"II");
+        self.write(&[42, 0, 8, 0, 0, 0]);
 
         let n_fields = 11;
         let offset = 8 + 2 + n_fields as u32 * 12 + 4;
         let resolution = 300u32;
 
-        self.f.write(&[n_fields, 0]).unwrap();
+        self.write(&[n_fields, 0]);
         self.write_field(Tag::ImageWidth, FieldType::SHORT, 1, self.img_width);
         self.write_field(Tag::ImageLength, FieldType::SHORT, 1, self.img_height);
         self.write_field(Tag::BitsPerSample, FieldType::SHORT, 3, offset);
@@ -80,19 +83,12 @@ impl TiffFile {
         );
         self.write_field(Tag::XResolution, FieldType::RATIONAL, 1, offset + 6);
         self.write_field(Tag::YResolution, FieldType::RATIONAL, 1, offset + 6 + 8);
-        self.f.write(&[0, 0, 0, 0]).unwrap();
+        self.write(&[0, 0, 0, 0]);
 
-        self.f.write(&[8, 0, 8, 0, 8, 0]).unwrap();
-        self.f.write(&resolution.to_le_bytes()).unwrap();
-        self.f.write(&[1, 0, 0, 0]).unwrap();
-        self.f.write(&resolution.to_le_bytes()).unwrap();
-        self.f.write(&[1, 0, 0, 0]).unwrap();
-    }
-
-    pub fn write_image_data(&mut self, data: &Vec3) {
-        let x = (data.x.sqrt().clamp(0.0, 1.0) * 255.0) as u8;
-        let y = (data.y.sqrt().clamp(0.0, 1.0) * 255.0) as u8;
-        let z = (data.z.sqrt().clamp(0.0, 1.0) * 255.0) as u8;
-        self.f.write(&[x, y, z]).unwrap();
+        self.write(&[8, 0, 8, 0, 8, 0]);
+        self.write(&resolution.to_le_bytes());
+        self.write(&[1, 0, 0, 0]);
+        self.write(&resolution.to_le_bytes());
+        self.write(&[1, 0, 0, 0]);
     }
 }

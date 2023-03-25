@@ -104,6 +104,12 @@ fn generate_spheres() -> Vec<Sphere> {
     spheres
 }
 
+fn push_pixel(buf: &mut Vec<u8>, pixel: &Vec3) {
+    buf.push((pixel.x.sqrt().clamp(0.0, 1.0) * 255.0) as u8);
+    buf.push((pixel.y.sqrt().clamp(0.0, 1.0) * 255.0) as u8);
+    buf.push((pixel.z.sqrt().clamp(0.0, 1.0) * 255.0) as u8);
+}
+
 fn main() {
     let aspect_ratio = 3.0 / 2.0;
     let img_width = 400;
@@ -124,6 +130,7 @@ fn main() {
 
     let spheres = generate_spheres();
 
+    let ref mut buffer: Vec<u8> = Vec::with_capacity((img_height * img_width * 3) as usize);
     let mut tiff_file = TiffFile::new(save_path, img_width, img_height);
     let now = Instant::now();
 
@@ -138,9 +145,10 @@ fn main() {
                 pixel_color += ray_color(&r, &spheres, max_depth);
             }
             pixel_color /= samples_per_pixel as f64;
-            tiff_file.write_image_data(&pixel_color);
+            push_pixel(buffer, &pixel_color);
         }
     }
+    tiff_file.write(buffer);
 
     eprintln!("\nDone.");
     let elapsed_time = now.elapsed();

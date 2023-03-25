@@ -11,3 +11,18 @@ The main purpose of this project is for me to learn Rust. Some lessons:
 2. Rust is known for its safety, not for its ease of use for computation. If I want to focus on writing code for fast computation, perhaps other languages that are specifically designed for the purpose are better suited, such as Julia.
 
 3. It's easy to write slow code for Rust. I had an old ray-tracing implementation in Numba (I probably should update it, should be interesting). I have a feeling the Numba version is faster than my Rust version. Theorectically Rust can be fast, but I don't know it well enough to optimize it.
+
+## Profiling
+
+Add the following to `Cargo.toml`
+
+```toml
+[profile.release]
+debug = 1
+```
+
+On MacOS
+
+```bash
+xcrun xctrace record --template 'Time Profiler' --launch -- ./target/release/ray-tracing-rust
+```
