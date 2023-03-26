@@ -2,7 +2,7 @@ use crate::random;
 use crate::utils::new_struct;
 use crate::vec3::Vec3;
 
-pub trait Material {
+pub trait Material: Send + Sync {
     fn scatter(&self, incident: &Vec3, normal: &Vec3, front_face: bool) -> Option<(Vec3, Vec3)>;
 }
 

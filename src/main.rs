@@ -7,6 +7,9 @@ mod tiff;
 mod utils;
 mod vec3;
 
+use core::slice;
+use std::sync::Arc;
+use std::thread;
 use std::time::Instant;
 
 use camera::Camera;
@@ -99,16 +102,8 @@ fn generate_spheres() -> Vec<Sphere> {
     spheres
 }
 
-fn write_pixel(buf: &mut Vec<u8>, pixel: &Vec3, offset: usize) {
-    fn convert_pixel(value: f64) -> u8 {
-        (value.sqrt().clamp(0.0, 1.0) * 255.0) as u8
-    }
-    buf[offset] = convert_pixel(pixel.x);
-    buf[offset + 1] = convert_pixel(pixel.y);
-    buf[offset + 2] = convert_pixel(pixel.z);
-}
-
 fn main() {
+    let n_threads = 4;
     let aspect_ratio = 3.0 / 2.0;
     let img_width = 400;
     let img_height = (img_width as f64 / aspect_ratio) as u32;
@@ -118,7 +113,7 @@ fn main() {
 
     random::seed_current_time();
 
-    let camera = Camera::new(
+    let camera = Arc::new(Camera::new(
         Vec3::new(13.0, 2.0, 3.0),
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
@@ -126,34 +121,60 @@ fn main() {
         aspect_ratio,
         0.1,
         10.0,
-    );
+    ));
 
-    let spheres = generate_spheres();
+    let spheres = Arc::new(generate_spheres());
 
     let buf_size = (img_height * img_width * 3) as usize;
-    let ref mut buffer: Vec<u8> = Vec::with_capacity(buf_size);
+    let mut buffer: Vec<u8> = Vec::with_capacity(buf_size);
     unsafe {
         buffer.set_len(buf_size);
     }
+    let buffer_ptr = buffer.as_mut_ptr();
 
     let mut tiff_file = TiffFile::new(save_path, img_width, img_height);
     let now = Instant::now();
 
-    for j in 0..img_height {
-        eprint!("\rScanlines remaining: {} ", img_height - j);
-        for i in 0..img_width {
-            let mut pixel_color = Vec3::zero();
-            for _ in 0..samples_per_pixel {
-                let u = (i as f64 + random::rand()) / img_width as f64;
-                let v = ((img_height - 1 - j) as f64 + random::rand()) / img_height as f64;
-                let r = camera.get_ray(u, v);
-                pixel_color += ray_color(&r, &spheres, max_depth);
-            }
-            pixel_color /= samples_per_pixel as f64;
-            write_pixel(buffer, &pixel_color, ((j * img_width + i) * 3) as usize);
+    let n_rows_per_thread = (img_height as f64 / n_threads as f64).ceil() as u32;
+    let mut thread_handles: Vec<thread::JoinHandle<()>> = Vec::with_capacity(n_threads as usize);
+    for thread_idx in 0..n_threads {
+        let thread_camera = camera.clone();
+        let thread_spheres = spheres.clone();
+        let thread_buffer;
+        unsafe {
+            thread_buffer = slice::from_raw_parts_mut(buffer_ptr, buf_size);
         }
+        let start_row = thread_idx * n_rows_per_thread;
+        let end_row = u32::min((thread_idx + 1) * n_rows_per_thread, img_height);
+
+        thread_handles.push(thread::spawn(move || {
+            for j in start_row..end_row {
+                for i in 0..img_width {
+                    let mut pixel_color = Vec3::zero();
+                    for _ in 0..samples_per_pixel {
+                        let u = (i as f64 + random::rand()) / img_width as f64;
+                        let v = ((img_height - 1 - j) as f64 + random::rand()) / img_height as f64;
+                        let r = thread_camera.get_ray(u, v);
+                        pixel_color += ray_color(&r, &thread_spheres, max_depth);
+                    }
+                    pixel_color /= samples_per_pixel as f64;
+
+                    let offset = ((j * img_width + i) * 3) as usize;
+                    fn convert_pixel(value: f64) -> u8 {
+                        (value.sqrt().clamp(0.0, 1.0) * 255.0) as u8
+                    }
+                    thread_buffer[offset] = convert_pixel(pixel_color.x);
+                    thread_buffer[offset + 1] = convert_pixel(pixel_color.y);
+                    thread_buffer[offset + 2] = convert_pixel(pixel_color.z);
+                }
+            }
+        }));
     }
-    tiff_file.write(buffer);
+    for handle in thread_handles {
+        handle.join().unwrap();
+    }
+
+    tiff_file.write(&buffer);
 
     eprintln!("\nDone.");
     let elapsed_time = now.elapsed();
