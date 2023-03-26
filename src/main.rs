@@ -33,14 +33,13 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
         return color1 + t * (color2 - color1);
     }
 
-    let ref sphere = spheres[sphere_idx];
+    let sphere = &spheres[sphere_idx];
     let incidence = ray.at(t);
-    let outward_normal = (incidence - sphere.center) / sphere.radius;
-    let front_face = ray.direction.dot(&outward_normal) < 0.0;
-    let normal = match front_face {
-        true => outward_normal,
-        false => -outward_normal,
-    };
+    let mut normal = (incidence - sphere.center) / sphere.radius;
+    let front_face = ray.direction.dot(&normal) < 0.0;
+    if !front_face {
+        normal = -normal;
+    }
 
     match sphere.material.scatter(&ray.direction, &normal, front_face) {
         None => Vec3::zero(),
@@ -132,11 +131,9 @@ fn main() {
     }
     let buffer_ptr = buffer.as_mut_ptr();
 
-    let mut tiff_file = TiffFile::new(save_path, img_width, img_height);
-    let now = Instant::now();
-
-    let n_rows_per_thread = (img_height as f64 / n_threads as f64).ceil() as u32;
     let mut thread_handles: Vec<thread::JoinHandle<()>> = Vec::with_capacity(n_threads as usize);
+
+    let now = Instant::now();
     for thread_idx in 0..n_threads {
         let thread_camera = camera.clone();
         let thread_spheres = spheres.clone();
@@ -144,11 +141,9 @@ fn main() {
         unsafe {
             thread_buffer = slice::from_raw_parts_mut(buffer_ptr, buf_size);
         }
-        let start_row = thread_idx * n_rows_per_thread;
-        let end_row = u32::min((thread_idx + 1) * n_rows_per_thread, img_height);
 
         thread_handles.push(thread::spawn(move || {
-            for j in start_row..end_row {
+            for j in (thread_idx..img_height).step_by(n_threads as usize) {
                 for i in 0..img_width {
                     let mut pixel_color = Vec3::zero();
                     for _ in 0..samples_per_pixel {
@@ -173,10 +168,10 @@ fn main() {
     for handle in thread_handles {
         handle.join().unwrap();
     }
-
-    tiff_file.write(&buffer);
-
     eprintln!("\nDone.");
     let elapsed_time = now.elapsed();
     eprintln!("{} seconds.", elapsed_time.as_secs());
+
+    let mut tiff_file = TiffFile::new(save_path, img_width, img_height);
+    tiff_file.write(&buffer);
 }
