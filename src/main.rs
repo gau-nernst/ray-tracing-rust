@@ -99,10 +99,13 @@ fn generate_spheres() -> Vec<Sphere> {
     spheres
 }
 
-fn push_pixel(buf: &mut Vec<u8>, pixel: &Vec3) {
-    buf.push((pixel.x.sqrt().clamp(0.0, 1.0) * 255.0) as u8);
-    buf.push((pixel.y.sqrt().clamp(0.0, 1.0) * 255.0) as u8);
-    buf.push((pixel.z.sqrt().clamp(0.0, 1.0) * 255.0) as u8);
+fn write_pixel(buf: &mut Vec<u8>, pixel: &Vec3, offset: usize) {
+    fn convert_pixel(value: f64) -> u8 {
+        (value.sqrt().clamp(0.0, 1.0) * 255.0) as u8
+    }
+    buf[offset] = convert_pixel(pixel.x);
+    buf[offset + 1] = convert_pixel(pixel.y);
+    buf[offset + 2] = convert_pixel(pixel.z);
 }
 
 fn main() {
@@ -127,22 +130,27 @@ fn main() {
 
     let spheres = generate_spheres();
 
-    let ref mut buffer: Vec<u8> = Vec::with_capacity((img_height * img_width * 3) as usize);
+    let buf_size = (img_height * img_width * 3) as usize;
+    let ref mut buffer: Vec<u8> = Vec::with_capacity(buf_size);
+    unsafe {
+        buffer.set_len(buf_size);
+    }
+
     let mut tiff_file = TiffFile::new(save_path, img_width, img_height);
     let now = Instant::now();
 
-    for j in (0..img_height).rev() {
-        eprint!("\rScanlines remaining: {j} ");
+    for j in 0..img_height {
+        eprint!("\rScanlines remaining: {} ", img_height - j);
         for i in 0..img_width {
             let mut pixel_color = Vec3::zero();
             for _ in 0..samples_per_pixel {
                 let u = (i as f64 + random::rand()) / img_width as f64;
-                let v = (j as f64 + random::rand()) / img_height as f64;
+                let v = ((img_height - 1 - j) as f64 + random::rand()) / img_height as f64;
                 let r = camera.get_ray(u, v);
                 pixel_color += ray_color(&r, &spheres, max_depth);
             }
             pixel_color /= samples_per_pixel as f64;
-            push_pixel(buffer, &pixel_color);
+            write_pixel(buffer, &pixel_color, ((j * img_width + i) * 3) as usize);
         }
     }
     tiff_file.write(buffer);
