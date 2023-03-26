@@ -9,7 +9,7 @@ mod vec3;
 use std::time::Instant;
 
 use camera::Camera;
-use material::Material;
+use material::{Dielectric, Lambertian, Material, Metal};
 use ray::Ray;
 use sphere::Sphere;
 use tiff::TiffFile;
@@ -65,18 +65,22 @@ fn generate_spheres() -> Vec<Sphere> {
         Sphere::new(
             Vec3::new(0.0, -1000.0, 0.0),
             1000.0,
-            Material::Lambertian(Vec3::new(0.5, 0.5, 0.5)),
+            Box::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5))),
         ),
-        Sphere::new(Vec3::new(0.0, 1.0, 0.0), 1.0, Material::Dielectric(1.5)),
+        Sphere::new(
+            Vec3::new(0.0, 1.0, 0.0),
+            1.0,
+            Box::new(Dielectric::new(1.5)),
+        ),
         Sphere::new(
             Vec3::new(-4.0, 1.0, 0.0),
             1.0,
-            Material::Lambertian(Vec3::new(0.4, 0.2, 0.1)),
+            Box::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1))),
         ),
         Sphere::new(
             Vec3::new(4.0, 1.0, 0.0),
             1.0,
-            Material::Metal(Vec3::new(0.7, 0.6, 0.5), 0.0),
+            Box::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0)),
         ),
     ];
     let something = Vec3::new(4.0, 0.2, 0.0);
@@ -88,14 +92,17 @@ fn generate_spheres() -> Vec<Sphere> {
                 b as f64 + 0.9 * random::rand(),
             );
             if (center - something).length() > 0.9 {
-                let material;
+                let material: Box<dyn Material>;
                 let choose_mat = random::rand();
                 if choose_mat < 0.8 {
-                    material = Material::Lambertian(Vec3::rand() * Vec3::rand());
+                    material = Box::new(Lambertian::new(Vec3::rand() * Vec3::rand()));
                 } else if choose_mat < 0.95 {
-                    material = Material::Metal(Vec3::rand_between(0.5, 1.0), random::rand() * 0.5)
+                    material = Box::new(Metal::new(
+                        Vec3::rand_between(0.5, 1.0),
+                        random::rand() * 0.5,
+                    ));
                 } else {
-                    material = Material::Dielectric(1.5);
+                    material = Box::new(Dielectric::new(1.5));
                 }
                 spheres.push(Sphere::new(center, 0.2, material));
             }
