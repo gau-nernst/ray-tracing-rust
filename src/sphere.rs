@@ -1,21 +1,11 @@
 use crate::material::Material;
 use crate::ray::Ray;
+use crate::utils::new_struct;
 use crate::vec3::Vec3;
 
-pub struct Sphere {
-    pub center: Vec3,
-    pub radius: f64,
-    pub material: Box<dyn Material>,
-}
+new_struct!(Sphere { center: Vec3, radius: f64, material: Box<dyn Material> });
 
 impl Sphere {
-    pub fn new(center: Vec3, radius: f64, material: Box<dyn Material>) -> Self {
-        Self {
-            center,
-            radius,
-            material,
-        }
-    }
     pub fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> f64 {
         let oc = ray.origin - self.center;
         let a = ray.direction.length2();

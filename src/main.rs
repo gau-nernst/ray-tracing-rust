@@ -4,6 +4,7 @@ mod random;
 mod ray;
 mod sphere;
 mod tiff;
+mod utils;
 mod vec3;
 
 use std::time::Instant;

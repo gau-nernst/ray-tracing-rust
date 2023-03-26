@@ -1,25 +1,12 @@
 use crate::random;
+use crate::utils::new_struct;
 use crate::vec3::Vec3;
 
 pub trait Material {
     fn scatter(&self, incident: &Vec3, normal: &Vec3, front_face: bool) -> Option<(Vec3, Vec3)>;
 }
 
-macro_rules! new_material {
-    ($name:ident { $($field_name:ident : $field_type:ty),* }) => {
-        pub struct $name {
-            $(pub $field_name: $field_type,)*
-        }
-
-        impl $name {
-            pub fn new($($field_name: $field_type,)*) -> $name{
-                $name { $($field_name,)* }
-            }
-        }
-    }
-}
-
-new_material!(Lambertian { albedo: Vec3 });
+new_struct!(Lambertian { albedo: Vec3 });
 
 impl Material for Lambertian {
     fn scatter(&self, incident: &Vec3, normal: &Vec3, front_face: bool) -> Option<(Vec3, Vec3)> {
@@ -32,7 +19,7 @@ impl Material for Lambertian {
     }
 }
 
-new_material!(Metal {
+new_struct!(Metal {
     albedo: Vec3,
     fuzz: f64
 });
@@ -48,7 +35,7 @@ impl Material for Metal {
     }
 }
 
-new_material!(Dielectric { eta: f64 });
+new_struct!(Dielectric { eta: f64 });
 
 impl Dielectric {
     fn schlick_reflectance(cosine: f64, eta: f64) -> f64 {
