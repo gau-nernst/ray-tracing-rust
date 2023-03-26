@@ -16,24 +16,11 @@ use sphere::Sphere;
 use tiff::TiffFile;
 use vec3::Vec3;
 
-fn hit_spheres(ray: &Ray, spheres: &Vec<Sphere>) -> (usize, f64) {
-    let mut sphere_idx = 0;
-    let mut t_max = f64::MAX;
-    for (idx, sphere) in spheres.iter().enumerate() {
-        let t = sphere.hit(ray, 0.0001, t_max);
-        if t < t_max {
-            sphere_idx = idx;
-            t_max = t;
-        }
-    }
-    (sphere_idx, t_max)
-}
-
 fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
     if depth <= 0 {
         return Vec3::zero();
     }
-    let (sphere_idx, t) = hit_spheres(ray, spheres);
+    let (sphere_idx, t) = Sphere::hit_spheres(ray, spheres);
 
     if t == f64::MAX {
         let unit_direction = ray.direction.normalize();

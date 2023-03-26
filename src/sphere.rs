@@ -29,4 +29,17 @@ impl Sphere {
 
         return f64::MAX;
     }
+
+    pub fn hit_spheres(ray: &Ray, spheres: &Vec<Sphere>) -> (usize, f64) {
+        let mut sphere_idx = 0;
+        let mut t_max = f64::MAX;
+        for (idx, sphere) in spheres.iter().enumerate() {
+            let t = sphere.hit(ray, 0.0001, t_max);
+            if t < t_max {
+                sphere_idx = idx;
+                t_max = t;
+            }
+        }
+        (sphere_idx, t_max)
+    }
 }
