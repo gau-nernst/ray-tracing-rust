@@ -30,15 +30,6 @@ impl Vec3 {
     pub fn normalize(self) -> Vec3 {
         self / self.length()
     }
-    pub fn reflect(self, n: Vec3) -> Vec3 {
-        self - 2.0 * self.dot(n) * n
-    }
-    pub fn refract(self, n: Vec3, eta: f32) -> Vec3 {
-        let cos_theta = f32::min(-self.dot(n), 1.0);
-        let r_out_perp = eta * (self + cos_theta * n);
-        let r_out_para = -(1.0 - r_out_perp.length2()).abs().sqrt() * n;
-        r_out_perp + r_out_para
-    }
     pub fn rand(rng: &mut pcg32::PCG32State) -> Vec3 {
         Vec3(rng.f32(), rng.f32(), rng.f32())
     }

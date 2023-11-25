@@ -36,6 +36,16 @@ new_struct!(Metal {
     fuzz: f32
 });
 
+fn reflect(incident: Vec3, n: Vec3) -> Vec3 {
+    incident - 2.0 * incident.dot(n) * n
+}
+fn refract(incident: Vec3, n: Vec3, eta: f32) -> Vec3 {
+    let cos_theta = f32::min(-incident.dot(n), 1.0);
+    let r_out_perp = eta * (incident + cos_theta * n);
+    let r_out_para = -(1.0 - r_out_perp.length2()).abs().sqrt() * n;
+    r_out_perp + r_out_para
+}
+
 impl Material for Metal {
     fn scatter(
         &self,
@@ -48,7 +58,7 @@ impl Material for Metal {
         if incident.dot(*normal) >= 0.0 {
             return None;
         }
-        let reflected = incident.reflect(*normal) + Vec3::random_unit_sphere(rng) * self.fuzz;
+        let reflected = reflect(*incident, *normal) + Vec3::random_unit_sphere(rng) * self.fuzz;
         Some((reflected, self.albedo))
     }
 }
@@ -81,8 +91,8 @@ impl Material for Dielectric {
 
         let refracted = match (eta * sin_theta <= 1.0) && (Dielectric::schlick_reflectance(cos_theta, eta) < rng.f32())
         {
-            true => incident_norm.refract(*normal, eta),
-            false => incident_norm.reflect(*normal), // total internal reflection
+            true => refract(incident_norm, *normal, eta),
+            false => reflect(incident_norm, *normal), // total internal reflection
         };
         Some((refracted, Vec3::zero()))
     }
