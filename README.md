@@ -1,4 +1,4 @@
-# Ray Tracing in One Weekend - Rust Edition
+# Ray Tracing in One Weekend - Rust
 
 [_Ray Tracing in One Weekend_](https://raytracing.github.io)
 

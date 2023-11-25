@@ -1,11 +1,22 @@
+use std::rc::Rc;
+
 use crate::material::Material;
 use crate::ray::Ray;
-use crate::utils::new_struct;
 use crate::vec3::Vec3;
 
-new_struct!(Sphere { center: Vec3, radius: f32, material: Box<dyn Material> });
-
+pub struct Sphere {
+    pub center: Vec3,
+    pub radius: f32,
+    pub material: Rc<dyn Material>,
+}
 impl Sphere {
+    pub fn new(center: Vec3, radius: f32, material: Rc<dyn Material>) -> Sphere {
+        Sphere {
+            center,
+            radius,
+            material,
+        }
+    }
     pub fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> f32 {
         let oc = ray.origin - self.center;
         let a = ray.direction.length2();
@@ -29,7 +40,6 @@ impl Sphere {
 
         f32::MAX
     }
-
     pub fn hit_spheres(ray: &Ray, spheres: &[Sphere]) -> (usize, f32) {
         let mut sphere_idx = 0;
         let mut t_max = f32::MAX;
