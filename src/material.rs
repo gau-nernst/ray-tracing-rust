@@ -9,7 +9,7 @@ pub trait Material: Send + Sync {
 new_struct!(Lambertian { albedo: Vec3 });
 
 impl Material for Lambertian {
-    fn scatter(&self, incident: &Vec3, normal: &Vec3, front_face: bool) -> Option<(Vec3, Vec3)> {
+    fn scatter(&self, _incident: &Vec3, normal: &Vec3, _front_face: bool) -> Option<(Vec3, Vec3)> {
         let mut diffuse = normal + Vec3::random_unit_sphere().normalize();
         // catch degenerate scatter direction
         if diffuse.length2() < 1e-16 {
@@ -25,7 +25,7 @@ new_struct!(Metal {
 });
 
 impl Material for Metal {
-    fn scatter(&self, incident: &Vec3, normal: &Vec3, front_face: bool) -> Option<(Vec3, Vec3)> {
+    fn scatter(&self, incident: &Vec3, normal: &Vec3, _front_face: bool) -> Option<(Vec3, Vec3)> {
         // only reflect when incident is opposite normal
         if incident.dot(normal) >= 0.0 {
             return None;

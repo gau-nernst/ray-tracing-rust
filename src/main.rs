@@ -7,9 +7,6 @@ mod tiff;
 mod utils;
 mod vec3;
 
-use core::slice;
-use std::sync::Arc;
-use std::thread;
 use std::time::Instant;
 
 use camera::Camera;
@@ -102,17 +99,15 @@ fn generate_spheres() -> Vec<Sphere> {
 }
 
 fn main() {
-    let n_threads = 4;
     let aspect_ratio = 3.0 / 2.0;
     let img_width = 400;
     let img_height = (img_width as f64 / aspect_ratio) as u32;
-    let samples_per_pixel = 100;
-    let max_depth = 50;
-    let save_path = "sample.tiff";
+    let samples_per_pixel = 10;
+    let max_depth = 10;
 
     random::seed_current_time();
 
-    let camera = Arc::new(Camera::new(
+    let camera = Camera::new(
         Vec3::new(13.0, 2.0, 3.0),
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
@@ -120,58 +115,39 @@ fn main() {
         aspect_ratio,
         0.1,
         10.0,
-    ));
+    );
 
-    let spheres = Arc::new(generate_spheres());
-
-    let buf_size = (img_height * img_width * 3) as usize;
-    let mut buffer: Vec<u8> = Vec::with_capacity(buf_size);
-    unsafe {
-        buffer.set_len(buf_size);
-    }
-    let buffer_ptr = buffer.as_mut_ptr();
-
-    let mut thread_handles: Vec<thread::JoinHandle<()>> = Vec::with_capacity(n_threads as usize);
+    let spheres = generate_spheres();
+    let mut buffer = vec![0_u8; (img_height * img_width * 3) as usize];
 
     let now = Instant::now();
-    for thread_idx in 0..n_threads {
-        let thread_camera = camera.clone();
-        let thread_spheres = spheres.clone();
-        let thread_buffer;
-        unsafe {
-            thread_buffer = slice::from_raw_parts_mut(buffer_ptr, buf_size);
-        }
 
-        thread_handles.push(thread::spawn(move || {
-            for j in (thread_idx..img_height).step_by(n_threads as usize) {
-                for i in 0..img_width {
-                    let mut pixel_color = Vec3::zero();
-                    for _ in 0..samples_per_pixel {
-                        let u = (i as f64 + random::rand()) / img_width as f64;
-                        let v = ((img_height - 1 - j) as f64 + random::rand()) / img_height as f64;
-                        let r = thread_camera.get_ray(u, v);
-                        pixel_color += ray_color(&r, &thread_spheres, max_depth);
-                    }
-                    pixel_color /= samples_per_pixel as f64;
-
-                    let offset = ((j * img_width + i) * 3) as usize;
-                    fn convert_pixel(value: f64) -> u8 {
-                        (value.sqrt().clamp(0.0, 1.0) * 255.0) as u8
-                    }
-                    thread_buffer[offset] = convert_pixel(pixel_color.x);
-                    thread_buffer[offset + 1] = convert_pixel(pixel_color.y);
-                    thread_buffer[offset + 2] = convert_pixel(pixel_color.z);
-                }
+    for j in 0..img_height {
+        eprint!("Line {j}\r");
+        for i in 0..img_width {
+            let mut pixel_color = Vec3::zero();
+            for _ in 0..samples_per_pixel {
+                let u = (i as f64 + random::rand()) / img_width as f64;
+                let v = ((img_height - 1 - j) as f64 + random::rand()) / img_height as f64;
+                let r = camera.get_ray(u, v);
+                pixel_color += ray_color(&r, &spheres, max_depth);
             }
-        }));
+            pixel_color /= samples_per_pixel as f64;
+
+            let offset = ((j * img_width + i) * 3) as usize;
+            fn convert_pixel(value: f64) -> u8 {
+                (value.sqrt().clamp(0.0, 1.0) * 255.0) as u8
+            }
+            buffer[offset] = convert_pixel(pixel_color.x);
+            buffer[offset + 1] = convert_pixel(pixel_color.y);
+            buffer[offset + 2] = convert_pixel(pixel_color.z);
+        }
     }
-    for handle in thread_handles {
-        handle.join().unwrap();
-    }
+
     eprintln!("\nDone.");
     let elapsed_time = now.elapsed();
     eprintln!("{} seconds.", elapsed_time.as_secs());
 
-    let mut tiff_file = TiffFile::new(save_path, img_width, img_height);
+    let mut tiff_file = TiffFile::new("sample.tiff", img_width, img_height);
     tiff_file.write(&buffer);
 }

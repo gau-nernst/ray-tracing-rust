@@ -23,7 +23,7 @@ pub fn rand_between(min: f64, max: f64) -> f64 {
 fn wyrand() -> u64 {
     let t;
     unsafe {
-        STATE += 0xa0761d6478bd642f;
+        STATE = STATE.wrapping_add(0xa0761d6478bd642f);
         t = (STATE as u128) * ((STATE ^ 0xe7037ed1a0b428db) as u128);
     }
     ((t >> 64) as u64) ^ (t as u64)
