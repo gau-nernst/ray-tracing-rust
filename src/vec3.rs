@@ -1,4 +1,4 @@
-use crate::random;
+use crate::pcg32;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy)]
@@ -34,32 +34,32 @@ impl Vec3 {
         self - 2.0 * self.dot(n) * n
     }
     pub fn refract(self, n: Vec3, eta: f32) -> Vec3 {
-        let cos_theta = 1f32.min(-self.dot(n));
+        let cos_theta = f32::min(-self.dot(n), 1.0);
         let r_out_perp = eta * (self + cos_theta * n);
         let r_out_para = -(1.0 - r_out_perp.length2()).abs().sqrt() * n;
         r_out_perp + r_out_para
     }
-    pub fn rand() -> Vec3 {
-        Vec3(random::randf32(), random::randf32(), random::randf32())
+    pub fn rand(rng: &mut pcg32::PCG32State) -> Vec3 {
+        Vec3(rng.f32(), rng.f32(), rng.f32())
     }
-    pub fn rand_between(min: f32, max: f32) -> Vec3 {
+    pub fn rand_between(rng: &mut pcg32::PCG32State, lo: f32, hi: f32) -> Vec3 {
         Vec3(
-            random::randf32_between(min, max),
-            random::randf32_between(min, max),
-            random::randf32_between(min, max),
+            rng.f32_between(lo, hi),
+            rng.f32_between(lo, hi),
+            rng.f32_between(lo, hi),
         )
     }
-    pub fn random_unit_sphere() -> Vec3 {
+    pub fn random_unit_sphere(rng: &mut pcg32::PCG32State) -> Vec3 {
         loop {
-            let p = Vec3::rand_between(-1.0, 1.0);
+            let p = Vec3::rand_between(rng, -1.0, 1.0);
             if p.length2() < 1.0 {
                 return p;
             }
         }
     }
-    pub fn random_unit_disk() -> Vec3 {
+    pub fn random_unit_disk(rng: &mut pcg32::PCG32State) -> Vec3 {
         loop {
-            let p = Vec3(random::randf32(), random::randf32(), 0.0);
+            let p = Vec3(rng.f32(), rng.f32(), 0.0);
             if p.length2() < 1.0 {
                 return p;
             }

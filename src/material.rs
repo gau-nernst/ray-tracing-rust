@@ -1,16 +1,28 @@
-use crate::random;
+use crate::pcg32;
 use crate::utils::new_struct;
 use crate::vec3::Vec3;
 
 pub trait Material: Send + Sync {
-    fn scatter(&self, incident: &Vec3, normal: &Vec3, front_face: bool) -> Option<(Vec3, Vec3)>;
+    fn scatter(
+        &self,
+        incident: &Vec3,
+        normal: &Vec3,
+        front_face: bool,
+        rng: &mut pcg32::PCG32State,
+    ) -> Option<(Vec3, Vec3)>;
 }
 
 new_struct!(Lambertian { albedo: Vec3 });
 
 impl Material for Lambertian {
-    fn scatter(&self, _incident: &Vec3, normal: &Vec3, _front_face: bool) -> Option<(Vec3, Vec3)> {
-        let mut diffuse = *normal + Vec3::random_unit_sphere().normalize();
+    fn scatter(
+        &self,
+        _incident: &Vec3,
+        normal: &Vec3,
+        _front_face: bool,
+        rng: &mut pcg32::PCG32State,
+    ) -> Option<(Vec3, Vec3)> {
+        let mut diffuse = *normal + Vec3::random_unit_sphere(rng).normalize();
         // catch degenerate scatter direction
         if diffuse.length2() < 1e-16 {
             diffuse = *normal;
@@ -25,12 +37,18 @@ new_struct!(Metal {
 });
 
 impl Material for Metal {
-    fn scatter(&self, incident: &Vec3, normal: &Vec3, _front_face: bool) -> Option<(Vec3, Vec3)> {
+    fn scatter(
+        &self,
+        incident: &Vec3,
+        normal: &Vec3,
+        _front_face: bool,
+        rng: &mut pcg32::PCG32State,
+    ) -> Option<(Vec3, Vec3)> {
         // only reflect when incident is opposite normal
         if incident.dot(*normal) >= 0.0 {
             return None;
         }
-        let reflected = incident.reflect(*normal) + Vec3::random_unit_sphere() * self.fuzz;
+        let reflected = incident.reflect(*normal) + Vec3::random_unit_sphere(rng) * self.fuzz;
         Some((reflected, self.albedo))
     }
 }
@@ -46,7 +64,13 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, incident: &Vec3, normal: &Vec3, front_face: bool) -> Option<(Vec3, Vec3)> {
+    fn scatter(
+        &self,
+        incident: &Vec3,
+        normal: &Vec3,
+        front_face: bool,
+        rng: &mut pcg32::PCG32State,
+    ) -> Option<(Vec3, Vec3)> {
         let eta = match front_face {
             true => 1.0 / self.eta,
             false => self.eta,
@@ -56,7 +80,7 @@ impl Material for Dielectric {
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
         let refracted = match (eta * sin_theta <= 1.0)
-            && (Dielectric::schlick_reflectance(cos_theta, eta) < random::randf32())
+            && (Dielectric::schlick_reflectance(cos_theta, eta) < rng.f32())
         {
             true => incident_norm.refract(*normal, eta),
             false => incident_norm.reflect(*normal), // total internal reflection

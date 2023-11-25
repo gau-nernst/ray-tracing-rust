@@ -1,6 +1,6 @@
 mod camera;
 mod material;
-mod random;
+mod pcg32;
 mod ray;
 mod sphere;
 mod tiff;
@@ -11,12 +11,13 @@ use std::time::Instant;
 
 use camera::Camera;
 use material::{Dielectric, Lambertian, Material, Metal};
+use pcg32::PCG32State;
 use ray::Ray;
 use sphere::Sphere;
 use tiff::TiffFile;
 use vec3::Vec3;
 
-fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
+fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32, rng: &mut pcg32::PCG32State) -> Vec3 {
     if depth <= 0 {
         return Vec3::zero();
     }
@@ -39,16 +40,21 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
         normal = -normal;
     }
 
-    match sphere.material.scatter(&ray.direction, &normal, front_face) {
+    match sphere
+        .material
+        .scatter(&ray.direction, &normal, front_face, rng)
+    {
         None => Vec3::zero(),
         Some((scatter, color)) => {
             let scatter_ray = Ray::new(incidence, scatter);
-            color * ray_color(&scatter_ray, spheres, depth - 1)
+            color * ray_color(&scatter_ray, spheres, depth - 1, rng)
         }
     }
 }
 
 fn generate_spheres() -> Vec<Sphere> {
+    let mut rng = PCG32State::new(19, 29);
+
     let mut spheres = vec![
         Sphere::new(
             Vec3(0.0, -1000.0, 0.0),
@@ -70,20 +76,17 @@ fn generate_spheres() -> Vec<Sphere> {
     let something = Vec3(4.0, 0.2, 0.0);
     for a in -11..11 {
         for b in -11..11 {
-            let center = Vec3(
-                a as f32 + 0.9 * random::randf32(),
-                0.2,
-                b as f32 + 0.9 * random::randf32(),
-            );
+            let center = Vec3(a as f32 + 0.9 * rng.f32(), 0.2, b as f32 + 0.9 * rng.f32());
             if (center - something).length() > 0.9 {
                 let material: Box<dyn Material>;
-                let choose_mat = random::randf32();
+                let choose_mat = rng.f32();
                 if choose_mat < 0.8 {
-                    material = Box::new(Lambertian::new(Vec3::rand() * Vec3::rand()));
+                    material =
+                        Box::new(Lambertian::new(Vec3::rand(&mut rng) * Vec3::rand(&mut rng)));
                 } else if choose_mat < 0.95 {
                     material = Box::new(Metal::new(
-                        Vec3::rand_between(0.5, 1.0),
-                        random::randf32() * 0.5,
+                        Vec3::rand_between(&mut rng, 0.5, 1.0),
+                        rng.f32() * 0.5,
                     ));
                 } else {
                     material = Box::new(Dielectric::new(1.5));
@@ -101,8 +104,6 @@ fn main() {
     let img_height = (img_width as f32 / aspect_ratio) as u32;
     let samples_per_pixel = 10;
     let max_depth = 10;
-
-    random::seed_current_time();
 
     let camera = Camera::new(
         Vec3(13.0, 2.0, 3.0),
@@ -122,13 +123,15 @@ fn main() {
     for j in 0..img_height {
         eprint!("Line {j}\r");
         for i in 0..img_width {
+            let mut rng = PCG32State::new(17 + j as u64, 23 + i as u64);
+
             let mut pixel_color = Vec3::zero();
             for _ in 0..samples_per_pixel {
-                let u = (i as f32 + random::randf32()) / img_width as f32;
-                let v = ((img_height - 1 - j) as f32 + random::randf32()) / img_height as f32;
+                let u = (i as f32 + rng.f32()) / img_width as f32;
+                let v = ((img_height - 1 - j) as f32 + rng.f32()) / img_height as f32;
 
-                let r = camera.get_ray(u, v);
-                pixel_color = pixel_color + ray_color(&r, &spheres, max_depth);
+                let r = camera.get_ray(u, v, &mut rng);
+                pixel_color = pixel_color + ray_color(&r, &spheres, max_depth, &mut rng);
             }
             pixel_color = pixel_color / samples_per_pixel as f32;
 

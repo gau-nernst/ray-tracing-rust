@@ -1,3 +1,4 @@
+use crate::pcg32;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
 use std::f32::consts::PI;
@@ -49,8 +50,8 @@ impl Camera {
             lens_radius: aperture / 2.0,
         }
     }
-    pub fn get_ray(&self, s: f32, t: f32) -> Ray {
-        let rd = self.lens_radius * Vec3::random_unit_disk();
+    pub fn get_ray(&self, s: f32, t: f32, rng: &mut pcg32::PCG32State) -> Ray {
+        let rd = self.lens_radius * Vec3::random_unit_disk(rng);
         let offset = self.u * rd.0 + self.v * rd.1;
         Ray::new(
             self.origin + offset,
