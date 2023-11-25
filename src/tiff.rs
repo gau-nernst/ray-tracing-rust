@@ -38,7 +38,7 @@ pub struct TiffFile {
 impl TiffFile {
     pub fn new(path: &str, img_width: u32, img_height: u32) -> TiffFile {
         let path = Path::new(path);
-        let f = BufWriter::new(File::create(&path).unwrap());
+        let f = BufWriter::new(File::create(path).unwrap());
         let mut tiff_file = TiffFile {
             f,
             img_width,
@@ -49,7 +49,7 @@ impl TiffFile {
     }
 
     pub fn write(&mut self, buf: &[u8]) {
-        self.f.write(buf).unwrap();
+        self.f.write_all(buf).unwrap();
     }
 
     fn write_field(&mut self, tag: u16, field_type: u16, count: u32, value: u32) {

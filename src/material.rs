@@ -1,8 +1,7 @@
 use crate::pcg32;
-use crate::utils::new_struct;
 use crate::vec3::Vec3;
 
-pub trait Material: Send + Sync {
+pub trait Material {
     fn scatter(
         &self,
         incident: &Vec3,
@@ -12,8 +11,14 @@ pub trait Material: Send + Sync {
     ) -> Option<(Vec3, Vec3)>;
 }
 
-new_struct!(Lambertian { albedo: Vec3 });
-
+pub struct Lambertian {
+    albedo: Vec3,
+}
+impl Lambertian {
+    pub fn new(albedo: Vec3) -> Lambertian {
+        Lambertian { albedo }
+    }
+}
 impl Material for Lambertian {
     fn scatter(
         &self,
@@ -31,21 +36,18 @@ impl Material for Lambertian {
     }
 }
 
-new_struct!(Metal {
+pub struct Metal {
     albedo: Vec3,
-    fuzz: f32
-});
-
+    fuzz: f32,
+}
+impl Metal {
+    pub fn new(albedo: Vec3, fuzz: f32) -> Metal {
+        Metal { albedo, fuzz }
+    }
+}
 fn reflect(incident: Vec3, n: Vec3) -> Vec3 {
     incident - 2.0 * incident.dot(n) * n
 }
-fn refract(incident: Vec3, n: Vec3, eta: f32) -> Vec3 {
-    let cos_theta = f32::min(-incident.dot(n), 1.0);
-    let r_out_perp = eta * (incident + cos_theta * n);
-    let r_out_para = -(1.0 - r_out_perp.length2()).abs().sqrt() * n;
-    r_out_perp + r_out_para
-}
-
 impl Material for Metal {
     fn scatter(
         &self,
@@ -58,21 +60,30 @@ impl Material for Metal {
         if incident.dot(*normal) >= 0.0 {
             return None;
         }
-        let reflected = reflect(*incident, *normal) + Vec3::random_unit_sphere(rng) * self.fuzz;
-        Some((reflected, self.albedo))
+        let reflected = reflect(*incident, *normal);
+        Some((reflected + Vec3::random_unit_sphere(rng) * self.fuzz, self.albedo))
     }
 }
 
-new_struct!(Dielectric { eta: f32 });
-
+pub struct Dielectric {
+    eta: f32,
+}
 impl Dielectric {
-    fn schlick_reflectance(cosine: f32, eta: f32) -> f32 {
-        let r0 = (1.0 - eta) / (1.0 + eta);
-        let r0 = r0 * r0;
-        r0 + (1.0 - r0) * (1.0 - cosine).powf(5.0)
+    pub fn new(eta: f32) -> Dielectric {
+        Dielectric { eta }
     }
 }
-
+fn refract(incident: Vec3, n: Vec3, eta: f32) -> Vec3 {
+    let cos_theta = f32::min(-incident.dot(n), 1.0);
+    let r_out_perp = eta * (incident + cos_theta * n);
+    let r_out_para = -(1.0 - r_out_perp.length2()).abs().sqrt() * n;
+    r_out_perp + r_out_para
+}
+fn schlick_reflectance(cos_theta: f32, eta: f32) -> f32 {
+    let r0 = (1.0 - eta) / (1.0 + eta);
+    let r02 = r0 * r0;
+    r02 + (1.0 - r02) * (1.0 - cos_theta).powf(5.0)
+}
 impl Material for Dielectric {
     fn scatter(
         &self,
@@ -86,11 +97,10 @@ impl Material for Dielectric {
             false => self.eta,
         };
         let incident_norm = incident.normalize();
-        let cos_theta = 1f32.min(-incident_norm.dot(*normal));
+        let cos_theta = (-incident_norm.dot(*normal)).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
-        let refracted = match (eta * sin_theta <= 1.0) && (Dielectric::schlick_reflectance(cos_theta, eta) < rng.f32())
-        {
+        let refracted = match (eta * sin_theta <= 1.0) && (schlick_reflectance(cos_theta, eta) < rng.f32()) {
             true => refract(incident_norm, *normal, eta),
             false => reflect(incident_norm, *normal), // total internal reflection
         };
