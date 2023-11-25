@@ -79,8 +79,7 @@ impl Material for Dielectric {
         let cos_theta = 1f32.min(-incident_norm.dot(*normal));
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
-        let refracted = match (eta * sin_theta <= 1.0)
-            && (Dielectric::schlick_reflectance(cos_theta, eta) < rng.f32())
+        let refracted = match (eta * sin_theta <= 1.0) && (Dielectric::schlick_reflectance(cos_theta, eta) < rng.f32())
         {
             true => incident_norm.refract(*normal, eta),
             false => incident_norm.reflect(*normal), // total internal reflection

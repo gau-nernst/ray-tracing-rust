@@ -40,10 +40,7 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32, rng: &mut pcg32::PCG3
         normal = -normal;
     }
 
-    match sphere
-        .material
-        .scatter(&ray.direction, &normal, front_face, rng)
-    {
+    match sphere.material.scatter(&ray.direction, &normal, front_face, rng) {
         None => Vec3::zero(),
         Some((scatter, color)) => {
             let scatter_ray = Ray::new(incidence, scatter);
@@ -67,11 +64,7 @@ fn generate_spheres() -> Vec<Sphere> {
             1.0,
             Box::new(Lambertian::new(Vec3(0.4, 0.2, 0.1))),
         ),
-        Sphere::new(
-            Vec3(4.0, 1.0, 0.0),
-            1.0,
-            Box::new(Metal::new(Vec3(0.7, 0.6, 0.5), 0.0)),
-        ),
+        Sphere::new(Vec3(4.0, 1.0, 0.0), 1.0, Box::new(Metal::new(Vec3(0.7, 0.6, 0.5), 0.0))),
     ];
     let something = Vec3(4.0, 0.2, 0.0);
     for a in -11..11 {
@@ -81,13 +74,9 @@ fn generate_spheres() -> Vec<Sphere> {
                 let material: Box<dyn Material>;
                 let choose_mat = rng.f32();
                 if choose_mat < 0.8 {
-                    material =
-                        Box::new(Lambertian::new(Vec3::rand(&mut rng) * Vec3::rand(&mut rng)));
+                    material = Box::new(Lambertian::new(Vec3::rand(&mut rng) * Vec3::rand(&mut rng)));
                 } else if choose_mat < 0.95 {
-                    material = Box::new(Metal::new(
-                        Vec3::rand_between(&mut rng, 0.5, 1.0),
-                        rng.f32() * 0.5,
-                    ));
+                    material = Box::new(Metal::new(Vec3::rand_between(&mut rng, 0.5, 1.0), rng.f32() * 0.5));
                 } else {
                     material = Box::new(Dielectric::new(1.5));
                 }
