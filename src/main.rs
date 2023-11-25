@@ -6,6 +6,7 @@ mod sphere;
 mod tiff;
 mod utils;
 mod vec3;
+use std::rc::Rc;
 
 use std::time::Instant;
 
@@ -56,29 +57,25 @@ fn generate_spheres() -> Vec<Sphere> {
         Sphere::new(
             Vec3(0.0, -1000.0, 0.0),
             1000.0,
-            Box::new(Lambertian::new(Vec3(0.5, 0.5, 0.5))),
+            Rc::new(Lambertian::new(Vec3(0.5, 0.5, 0.5))),
         ),
-        Sphere::new(Vec3(0.0, 1.0, 0.0), 1.0, Box::new(Dielectric::new(1.5))),
-        Sphere::new(
-            Vec3(-4.0, 1.0, 0.0),
-            1.0,
-            Box::new(Lambertian::new(Vec3(0.4, 0.2, 0.1))),
-        ),
-        Sphere::new(Vec3(4.0, 1.0, 0.0), 1.0, Box::new(Metal::new(Vec3(0.7, 0.6, 0.5), 0.0))),
+        Sphere::new(Vec3(0.0, 1.0, 0.0), 1.0, Rc::new(Dielectric::new(1.5))),
+        Sphere::new(Vec3(-4.0, 1.0, 0.0), 1.0, Rc::new(Lambertian::new(Vec3(0.4, 0.2, 0.1)))),
+        Sphere::new(Vec3(4.0, 1.0, 0.0), 1.0, Rc::new(Metal::new(Vec3(0.7, 0.6, 0.5), 0.0))),
     ];
     let something = Vec3(4.0, 0.2, 0.0);
     for a in -11..11 {
         for b in -11..11 {
             let center = Vec3(a as f32 + 0.9 * rng.f32(), 0.2, b as f32 + 0.9 * rng.f32());
             if (center - something).length() > 0.9 {
-                let material: Box<dyn Material>;
+                let material: Rc<dyn Material>;
                 let choose_mat = rng.f32();
                 if choose_mat < 0.8 {
-                    material = Box::new(Lambertian::new(Vec3::rand(&mut rng) * Vec3::rand(&mut rng)));
+                    material = Rc::new(Lambertian::new(Vec3::rand(&mut rng) * Vec3::rand(&mut rng)));
                 } else if choose_mat < 0.95 {
-                    material = Box::new(Metal::new(Vec3::rand_between(&mut rng, 0.5, 1.0), rng.f32() * 0.5));
+                    material = Rc::new(Metal::new(Vec3::rand_between(&mut rng, 0.5, 1.0), rng.f32() * 0.5));
                 } else {
-                    material = Box::new(Dielectric::new(1.5));
+                    material = Rc::new(Dielectric::new(1.5));
                 }
                 spheres.push(Sphere::new(center, 0.2, material));
             }
