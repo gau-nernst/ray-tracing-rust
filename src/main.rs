@@ -2,7 +2,7 @@ mod camera;
 mod material;
 mod pcg32;
 mod ray;
-mod sphere;
+mod hittable;
 mod tiff;
 mod utils;
 mod vec3;
@@ -14,7 +14,7 @@ use camera::Camera;
 use material::{Dielectric, Lambertian, Material, Metal};
 use pcg32::PCG32State;
 use ray::Ray;
-use sphere::Sphere;
+use hittable::Sphere;
 use tiff::TiffFile;
 use vec3::Vec3;
 
