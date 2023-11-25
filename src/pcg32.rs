@@ -23,8 +23,8 @@ impl PCG32State {
         let rot = (old_state >> 59) as u32;
         (xorshifted >> rot) | (xorshifted << (0u32.wrapping_sub(rot) & 31))
     }
-    pub fn u32_between(&mut self, lo: u32, hi: u32) {
-        lo + self.u32() % (hi - lo); // not accurate
+    pub fn u32_between(&mut self, lo: u32, hi: u32) -> u32 {
+        lo + self.u32() % (hi - lo) // not accurate
     }
     pub fn f32(&mut self) -> f32 {
         (self.u32() >> 8) as f32 / (1 << 24) as f32
