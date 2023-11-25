@@ -27,10 +27,10 @@ impl Sphere {
             return root;
         }
 
-        return f32::MAX;
+        f32::MAX
     }
 
-    pub fn hit_spheres(ray: &Ray, spheres: &Vec<Sphere>) -> (usize, f32) {
+    pub fn hit_spheres(ray: &Ray, spheres: &[Sphere]) -> (usize, f32) {
         let mut sphere_idx = 0;
         let mut t_max = f32::MAX;
 
