@@ -1,6 +1,6 @@
 use crate::ray::Ray;
 use crate::vec3::Vec3;
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 
 pub struct Camera {
     origin: Vec3,
@@ -10,7 +10,7 @@ pub struct Camera {
     u: Vec3,
     v: Vec3,
     w: Vec3,
-    lens_radius: f64,
+    lens_radius: f32,
 }
 
 impl Camera {
@@ -18,10 +18,10 @@ impl Camera {
         look_from: Vec3,
         look_at: Vec3,
         vup: Vec3,
-        vfov: f64,
-        aspect_ratio: f64,
-        aperture: f64,
-        focus_distance: f64,
+        vfov: f32,
+        aspect_ratio: f32,
+        aperture: f32,
+        focus_distance: f32,
     ) -> Camera {
         let theta = vfov * PI / 180.0;
         let h = (theta / 2.0).tan();
@@ -29,8 +29,8 @@ impl Camera {
         let viewport_width = viewport_height * aspect_ratio;
 
         let w = (look_from - look_at).normalize();
-        let u = vup.cross(&w).normalize();
-        let v = w.cross(&u);
+        let u = vup.cross(w).normalize();
+        let v = w.cross(u);
 
         // NOTE: camera pointing in negative z direction
         let origin = look_from;
@@ -49,9 +49,9 @@ impl Camera {
             lens_radius: aperture / 2.0,
         }
     }
-    pub fn get_ray(&self, s: f64, t: f64) -> Ray {
+    pub fn get_ray(&self, s: f32, t: f32) -> Ray {
         let rd = self.lens_radius * Vec3::random_unit_disk();
-        let offset = self.u * rd.x + self.v * rd.y;
+        let offset = self.u * rd.0 + self.v * rd.1;
         Ray::new(
             self.origin + offset,
             self.lower_left_corner + self.horizontal * s + self.vertical * t - self.origin - offset,

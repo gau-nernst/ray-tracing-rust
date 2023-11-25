@@ -20,20 +20,21 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
     if depth <= 0 {
         return Vec3::zero();
     }
+
     let (sphere_idx, t) = Sphere::hit_spheres(ray, spheres);
 
-    if t == f64::MAX {
+    if t == f32::MAX {
         let unit_direction = ray.direction.normalize();
-        let t = 0.5 * (unit_direction.y + 1.0);
+        let t = 0.5 * (unit_direction.1 + 1.0);
         let color1 = Vec3::one();
-        let color2 = Vec3::new(0.5, 0.7, 1.0);
+        let color2 = Vec3(0.5, 0.7, 1.0);
         return color1 + t * (color2 - color1);
     }
 
     let sphere = &spheres[sphere_idx];
     let incidence = ray.at(t);
     let mut normal = (incidence - sphere.center) / sphere.radius;
-    let front_face = ray.direction.dot(&normal) < 0.0;
+    let front_face = ray.direction.dot(normal) < 0.0;
     if !front_face {
         normal = -normal;
     }
@@ -50,43 +51,39 @@ fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32) -> Vec3 {
 fn generate_spheres() -> Vec<Sphere> {
     let mut spheres = vec![
         Sphere::new(
-            Vec3::new(0.0, -1000.0, 0.0),
+            Vec3(0.0, -1000.0, 0.0),
             1000.0,
-            Box::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5))),
+            Box::new(Lambertian::new(Vec3(0.5, 0.5, 0.5))),
+        ),
+        Sphere::new(Vec3(0.0, 1.0, 0.0), 1.0, Box::new(Dielectric::new(1.5))),
+        Sphere::new(
+            Vec3(-4.0, 1.0, 0.0),
+            1.0,
+            Box::new(Lambertian::new(Vec3(0.4, 0.2, 0.1))),
         ),
         Sphere::new(
-            Vec3::new(0.0, 1.0, 0.0),
+            Vec3(4.0, 1.0, 0.0),
             1.0,
-            Box::new(Dielectric::new(1.5)),
-        ),
-        Sphere::new(
-            Vec3::new(-4.0, 1.0, 0.0),
-            1.0,
-            Box::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1))),
-        ),
-        Sphere::new(
-            Vec3::new(4.0, 1.0, 0.0),
-            1.0,
-            Box::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0)),
+            Box::new(Metal::new(Vec3(0.7, 0.6, 0.5), 0.0)),
         ),
     ];
-    let something = Vec3::new(4.0, 0.2, 0.0);
+    let something = Vec3(4.0, 0.2, 0.0);
     for a in -11..11 {
         for b in -11..11 {
-            let center = Vec3::new(
-                a as f64 + 0.9 * random::rand(),
+            let center = Vec3(
+                a as f32 + 0.9 * random::randf32(),
                 0.2,
-                b as f64 + 0.9 * random::rand(),
+                b as f32 + 0.9 * random::randf32(),
             );
             if (center - something).length() > 0.9 {
                 let material: Box<dyn Material>;
-                let choose_mat = random::rand();
+                let choose_mat = random::randf32();
                 if choose_mat < 0.8 {
                     material = Box::new(Lambertian::new(Vec3::rand() * Vec3::rand()));
                 } else if choose_mat < 0.95 {
                     material = Box::new(Metal::new(
                         Vec3::rand_between(0.5, 1.0),
-                        random::rand() * 0.5,
+                        random::randf32() * 0.5,
                     ));
                 } else {
                     material = Box::new(Dielectric::new(1.5));
@@ -101,16 +98,16 @@ fn generate_spheres() -> Vec<Sphere> {
 fn main() {
     let aspect_ratio = 3.0 / 2.0;
     let img_width = 400;
-    let img_height = (img_width as f64 / aspect_ratio) as u32;
+    let img_height = (img_width as f32 / aspect_ratio) as u32;
     let samples_per_pixel = 10;
     let max_depth = 10;
 
     random::seed_current_time();
 
     let camera = Camera::new(
-        Vec3::new(13.0, 2.0, 3.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 1.0, 0.0),
+        Vec3(13.0, 2.0, 3.0),
+        Vec3(0.0, 0.0, 0.0),
+        Vec3(0.0, 1.0, 0.0),
         20.0,
         aspect_ratio,
         0.1,
@@ -127,20 +124,18 @@ fn main() {
         for i in 0..img_width {
             let mut pixel_color = Vec3::zero();
             for _ in 0..samples_per_pixel {
-                let u = (i as f64 + random::rand()) / img_width as f64;
-                let v = ((img_height - 1 - j) as f64 + random::rand()) / img_height as f64;
+                let u = (i as f32 + random::randf32()) / img_width as f32;
+                let v = ((img_height - 1 - j) as f32 + random::randf32()) / img_height as f32;
+
                 let r = camera.get_ray(u, v);
-                pixel_color += ray_color(&r, &spheres, max_depth);
+                pixel_color = pixel_color + ray_color(&r, &spheres, max_depth);
             }
-            pixel_color /= samples_per_pixel as f64;
+            pixel_color = pixel_color / samples_per_pixel as f32;
 
             let offset = ((j * img_width + i) * 3) as usize;
-            fn convert_pixel(value: f64) -> u8 {
-                (value.sqrt().clamp(0.0, 1.0) * 255.0) as u8
-            }
-            buffer[offset] = convert_pixel(pixel_color.x);
-            buffer[offset + 1] = convert_pixel(pixel_color.y);
-            buffer[offset + 2] = convert_pixel(pixel_color.z);
+            buffer[offset] = (pixel_color.0.sqrt().clamp(0.0, 1.0) * 255.0) as u8;
+            buffer[offset + 1] = (pixel_color.1.sqrt().clamp(0.0, 1.0) * 255.0) as u8;
+            buffer[offset + 2] = (pixel_color.2.sqrt().clamp(0.0, 1.0) * 255.0) as u8;
         }
     }
 

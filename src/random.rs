@@ -19,6 +19,14 @@ pub fn rand_between(min: f64, max: f64) -> f64 {
     min + rand() * (max - min)
 }
 
+pub fn randf32() -> f32 {
+    (((wyrand() as u32) >> 8) as f32) / ((1 << 24) as f32)
+}
+
+pub fn randf32_between(min: f32, max: f32) -> f32 {
+    min + randf32() * (max - min)
+}
+
 // adapted from https://github.com/lemire/testingRNG/blob/master/source/wyrand.h
 fn wyrand() -> u64 {
     let t;

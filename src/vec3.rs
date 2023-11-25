@@ -1,52 +1,52 @@
 use crate::random;
-use crate::utils::new_struct;
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
-new_struct!(Vec3 { x: f64, y: f64, z: f64 } derive(Debug, Clone, Copy));
+#[derive(Debug, Clone, Copy)]
+pub struct Vec3(pub f32, pub f32, pub f32);
 
 impl Vec3 {
     pub fn zero() -> Vec3 {
-        Vec3::new(0.0, 0.0, 0.0)
+        Vec3(0.0, 0.0, 0.0)
     }
     pub fn one() -> Vec3 {
-        Vec3::new(1.0, 1.0, 1.0)
+        Vec3(1.0, 1.0, 1.0)
     }
-    pub fn length(&self) -> f64 {
+    pub fn length(self) -> f32 {
         self.length2().sqrt()
     }
-    pub fn length2(&self) -> f64 {
+    pub fn length2(self) -> f32 {
         self.dot(self)
     }
-    pub fn dot(&self, other: &Vec3) -> f64 {
-        self.x * other.x + self.y * other.y + self.z * other.z
+    pub fn dot(self, other: Vec3) -> f32 {
+        self.0 * other.0 + self.1 * other.1 + self.2 * other.2
     }
-    pub fn cross(&self, other: &Vec3) -> Vec3 {
-        Vec3::new(
-            self.y * other.z - other.y * self.z,
-            self.z * other.x - other.z * self.x,
-            self.x * other.y - other.x * self.y,
+    pub fn cross(&self, other: Vec3) -> Vec3 {
+        Vec3(
+            self.1 * other.2 - other.1 * self.2,
+            self.2 * other.0 - other.2 * self.0,
+            self.0 * other.1 - other.0 * self.1,
         )
     }
-    pub fn normalize(&self) -> Vec3 {
+    pub fn normalize(self) -> Vec3 {
         self / self.length()
     }
-    pub fn reflect(&self, n: &Vec3) -> Vec3 {
+    pub fn reflect(self, n: Vec3) -> Vec3 {
         self - 2.0 * self.dot(n) * n
     }
-    pub fn refract(&self, n: &Vec3, eta: f64) -> Vec3 {
-        let cos_theta = 1f64.min(-self.dot(n));
+    pub fn refract(self, n: Vec3, eta: f32) -> Vec3 {
+        let cos_theta = 1f32.min(-self.dot(n));
         let r_out_perp = eta * (self + cos_theta * n);
         let r_out_para = -(1.0 - r_out_perp.length2()).abs().sqrt() * n;
         r_out_perp + r_out_para
     }
     pub fn rand() -> Vec3 {
-        Vec3::new(random::rand(), random::rand(), random::rand())
+        Vec3(random::randf32(), random::randf32(), random::randf32())
     }
-    pub fn rand_between(min: f64, max: f64) -> Vec3 {
-        Vec3::new(
-            random::rand_between(min, max),
-            random::rand_between(min, max),
-            random::rand_between(min, max),
+    pub fn rand_between(min: f32, max: f32) -> Vec3 {
+        Vec3(
+            random::randf32_between(min, max),
+            random::randf32_between(min, max),
+            random::randf32_between(min, max),
         )
     }
     pub fn random_unit_sphere() -> Vec3 {
@@ -59,7 +59,7 @@ impl Vec3 {
     }
     pub fn random_unit_disk() -> Vec3 {
         loop {
-            let p = Vec3::new(random::rand(), random::rand(), 0.0);
+            let p = Vec3(random::randf32(), random::randf32(), 0.0);
             if p.length2() < 1.0 {
                 return p;
             }
@@ -70,76 +70,82 @@ impl Vec3 {
 impl Neg for Vec3 {
     type Output = Vec3;
     fn neg(self) -> Vec3 {
-        Vec3::new(-self.x, -self.y, -self.z)
+        Vec3(-self.0, -self.1, -self.2)
     }
 }
 
-macro_rules! expand {
-    ($token:tt, $attr:ident, "vec3") => {
-        $token.$attr
-    };
-    ($token:tt, $attr:ident, "f64") => {
-        $token
-    };
+impl Add<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn add(self, rhs: Vec3) -> Self::Output {
+        Vec3(self.0 + rhs.0, self.1 + rhs.1, self.2 + rhs.2)
+    }
+}
+impl Add<f32> for Vec3 {
+    type Output = Vec3;
+    fn add(self, rhs: f32) -> Self::Output {
+        Vec3(self.0 + rhs, self.1 + rhs, self.2 + rhs)
+    }
+}
+impl Add<Vec3> for f32 {
+    type Output = Vec3;
+    fn add(self, rhs: Vec3) -> Self::Output {
+        Vec3(self + rhs.0, self + rhs.1, self + rhs.2)
+    }
 }
 
-macro_rules! impl_binary_op {
-    ($trait:ident, $method:ident) => {
-        impl_binary_op!(Vec3, $trait, $method);
-        impl_binary_op!(&Vec3, $trait, $method);
-    };
-
-    ($type:ty, $trait:ident, $method:ident) => {
-        impl_binary_op!($type, "vec3", Vec3, "vec3", $trait, $method);
-        impl_binary_op!($type, "vec3", &Vec3, "vec3", $trait, $method);
-
-        impl_binary_op!($type, "vec3", f64, "f64", $trait, $method);
-        impl_binary_op!($type, "vec3", &f64, "f64", $trait, $method);
-
-        impl_binary_op!(f64, "f64", $type, "vec3", $trait, $method);
-        impl_binary_op!(&f64, "f64", $type, "vec3", $trait, $method);
-    };
-
-    ($type1:ty, $expand1:tt, $type2:ty, $expand2:tt, $trait:ident, $method:ident) => {
-        impl $trait<$type2> for $type1 {
-            type Output = Vec3;
-            fn $method(self, rhs: $type2) -> Vec3 {
-                Vec3::new(
-                    expand!(self, x, $expand1).$method(expand!(rhs, x, $expand2)),
-                    expand!(self, y, $expand1).$method(expand!(rhs, y, $expand2)),
-                    expand!(self, z, $expand1).$method(expand!(rhs, z, $expand2)),
-                )
-            }
-        }
-    };
+impl Mul<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, rhs: Vec3) -> Self::Output {
+        Vec3(self.0 * rhs.0, self.1 * rhs.1, self.2 * rhs.2)
+    }
+}
+impl Mul<f32> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, rhs: f32) -> Self::Output {
+        Vec3(self.0 * rhs, self.1 * rhs, self.2 * rhs)
+    }
+}
+impl Mul<Vec3> for f32 {
+    type Output = Vec3;
+    fn mul(self, rhs: Vec3) -> Self::Output {
+        Vec3(self * rhs.0, self * rhs.1, self * rhs.2)
+    }
 }
 
-impl_binary_op!(Add, add);
-impl_binary_op!(Sub, sub);
-impl_binary_op!(Mul, mul);
-impl_binary_op!(Div, div);
-
-macro_rules! impl_assign_op {
-    ($trait:ident, $method:ident) => {
-        impl_assign_op!(Vec3, "vec3", $trait, $method);
-        impl_assign_op!(&Vec3, "vec3", $trait, $method);
-
-        impl_assign_op!(f64, "f64", $trait, $method);
-        impl_assign_op!(&f64, "f64", $trait, $method);
-    };
-
-    ($type:ty, $expand:tt, $trait:ident, $method:ident) => {
-        impl $trait<$type> for Vec3 {
-            fn $method(&mut self, rhs: $type) {
-                self.x.$method(expand!(rhs, x, $expand));
-                self.y.$method(expand!(rhs, y, $expand));
-                self.z.$method(expand!(rhs, z, $expand));
-            }
-        }
-    };
+impl Sub<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn sub(self, rhs: Vec3) -> Self::Output {
+        Vec3(self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2)
+    }
+}
+impl Sub<f32> for Vec3 {
+    type Output = Vec3;
+    fn sub(self, rhs: f32) -> Self::Output {
+        Vec3(self.0 - rhs, self.1 - rhs, self.2 - rhs)
+    }
+}
+impl Sub<Vec3> for f32 {
+    type Output = Vec3;
+    fn sub(self, rhs: Vec3) -> Self::Output {
+        Vec3(self - rhs.0, self - rhs.1, self - rhs.2)
+    }
 }
 
-impl_assign_op!(AddAssign, add_assign);
-impl_assign_op!(SubAssign, sub_assign);
-impl_assign_op!(MulAssign, mul_assign);
-impl_assign_op!(DivAssign, div_assign);
+impl Div<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn div(self, rhs: Vec3) -> Self::Output {
+        Vec3(self.0 / rhs.0, self.1 / rhs.1, self.2 / rhs.2)
+    }
+}
+impl Div<f32> for Vec3 {
+    type Output = Vec3;
+    fn div(self, rhs: f32) -> Self::Output {
+        Vec3(self.0 / rhs, self.1 / rhs, self.2 / rhs)
+    }
+}
+impl Div<Vec3> for f32 {
+    type Output = Vec3;
+    fn div(self, rhs: Vec3) -> Self::Output {
+        Vec3(self / rhs.0, self / rhs.1, self / rhs.2)
+    }
+}
