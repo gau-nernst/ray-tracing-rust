@@ -1,7 +1,8 @@
+use std::mem;
 use std::rc::Rc;
 
 use crate::material::Material;
-use crate::vec3::Vec3;
+use crate::vec3::{Axis, Vec3};
 
 pub struct Ray {
     pub origin: Vec3,
@@ -27,18 +28,86 @@ impl HitRecord {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct AABB {
+    x: (f32, f32),
+    y: (f32, f32),
+    z: (f32, f32),
+}
+impl AABB {
+    fn empty() -> AABB {
+        AABB {
+            x: (f32::INFINITY, -f32::INFINITY),
+            y: (f32::INFINITY, -f32::INFINITY),
+            z: (f32::INFINITY, -f32::INFINITY),
+        }
+    }
+    fn from_vec3(a: Vec3, b: Vec3) -> AABB {
+        AABB {
+            x: (a.0.min(b.0), a.0.max(b.0)),
+            y: (a.1.min(b.1), a.1.max(b.1)),
+            z: (a.2.min(b.2), a.2.max(b.2)),
+        }
+    }
+    fn from_aabb(a: AABB, b: AABB) -> AABB {
+        AABB {
+            x: (a.x.0.min(b.x.0), a.x.1.max(b.x.1)),
+            y: (a.y.0.min(b.y.0), a.y.1.max(b.y.1)),
+            z: (a.z.0.min(b.z.0), a.z.1.max(b.z.1)),
+        }
+    }
+    fn axis(&self, axis: Axis) -> (f32, f32) {
+        match axis {
+            Axis::X => self.x,
+            Axis::Y => self.y,
+            Axis::Z => self.z,
+        }
+    }
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> bool {
+        let mut t_min = t_min;
+        let mut t_max = t_max;
+
+        for axis in [Axis::X, Axis::Y, Axis::Z] {
+            let inv_d = 1.0 / ray.direction.axis(axis);
+            let origin = ray.origin.axis(axis);
+
+            let mut t0 = (self.axis(axis).0 - origin) * inv_d;
+            let mut t1 = (self.axis(axis).1 - origin) * inv_d;
+
+            if inv_d < 0.0 {
+                mem::swap(&mut t0, &mut t1);
+            }
+
+            t_min = t_min.max(t0);
+            t_max = t_max.min(t1);
+
+            if t_max <= t_min {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
 pub trait Hittable {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
+    fn bbox(&self) -> AABB;
 }
 
 pub struct HittableList {
     objects: Vec<Box<dyn Hittable>>,
+    bbox: AABB,
 }
 
-#[rustfmt::skip]
 impl HittableList {
-    pub fn new() -> HittableList { HittableList { objects: Vec::new() } }
-    pub fn push(&mut self, obj: Box<dyn Hittable>) { self.objects.push(obj); }
+    pub fn new() -> HittableList {
+        HittableList { objects: Vec::new(), bbox: AABB::empty() }
+    }
+    pub fn push(&mut self, obj: Box<dyn Hittable>) {
+        self.bbox = AABB::from_aabb(self.bbox, obj.bbox());
+        self.objects.push(obj);
+    }
 }
 impl Hittable for HittableList {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
@@ -57,16 +126,25 @@ impl Hittable for HittableList {
 
         rec
     }
+    fn bbox(&self) -> AABB {
+        self.bbox
+    }
 }
 
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
     pub material: Rc<dyn Material>,
+    bbox: AABB,
 }
 impl Sphere {
     pub fn new(center: Vec3, radius: f32, material: Rc<dyn Material>) -> Sphere {
-        Sphere { center, radius, material }
+        Sphere {
+            center,
+            radius,
+            material,
+            bbox: AABB::from_vec3(center - radius, center + radius),
+        }
     }
 }
 impl Hittable for Sphere {
@@ -104,5 +182,8 @@ impl Hittable for Sphere {
             root,
             front_face,
         ))
+    }
+    fn bbox(&self) -> AABB {
+        self.bbox
     }
 }

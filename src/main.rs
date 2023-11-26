@@ -60,8 +60,9 @@ fn generate_spheres(objects: &mut HittableList) {
 }
 
 fn main() {
+    let aspect_ratio = 16.0 / 9.0;
     let camera = Camera::new(
-        3.0 / 2.0,
+        aspect_ratio,
         Vec3(13.0, 2.0, 3.0),
         Vec3(0.0, 0.0, 0.0),
         Vec3(0.0, 1.0, 0.0),
@@ -69,7 +70,7 @@ fn main() {
         0.1,
         10.0,
     );
-    let renderer = Renderer::new(400, 16.0 / 9.0, 10, 10);
+    let renderer = Renderer::new(400, aspect_ratio, 10, 10);
 
     let mut objects = HittableList::new();
     generate_spheres(&mut objects);

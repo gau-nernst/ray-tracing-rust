@@ -3,10 +3,24 @@ use crate::pcg32::PCG32;
 #[derive(Debug, Clone, Copy)]
 pub struct Vec3(pub f32, pub f32, pub f32);
 
+#[derive(Debug, Clone, Copy)]
+pub enum Axis {
+    X = 0,
+    Y = 1,
+    Z = 2,
+}
+
 #[rustfmt::skip]
 impl Vec3 {
     pub fn zero() -> Vec3 { Vec3(0.0, 0.0, 0.0) }
     pub fn one() -> Vec3 { Vec3(1.0, 1.0, 1.0) }
+    pub fn axis(&self, axis: Axis) -> f32 {
+        match axis {
+            Axis::X => self.0,
+            Axis::Y => self.1,
+            Axis::Z => self.2,
+        }
+    }
     pub fn length(self) -> f32 { self.length2().sqrt() }
     pub fn length2(self) -> f32 { self.dot(self) }
     pub fn dot(self, other: Vec3) -> f32 { self.0 * other.0 + self.1 * other.1 + self.2 * other.2 }
