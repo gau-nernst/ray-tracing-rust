@@ -231,7 +231,7 @@ impl BVHNode {
         let left;
         let right;
 
-        let compare_bbox = match rng.u32_between(0, 3) {
+        let compare_fn = match rng.u32_between(0, 3) {
             0 => BVHNode::compare_bbox_x,
             1 => BVHNode::compare_bbox_y,
             2 => BVHNode::compare_bbox_z,
@@ -243,7 +243,7 @@ impl BVHNode {
                 left = objects[0].clone();
                 right = objects[0].clone();
             }
-            2 => match compare_bbox(&objects[0], &objects[1]) {
+            2 => match compare_fn(&objects[0], &objects[1]) {
                 Ordering::Less => {
                     left = objects[0].clone();
                     right = objects[1].clone();
@@ -254,7 +254,7 @@ impl BVHNode {
                 }
             },
             _ => {
-                objects.sort_by(compare_bbox);
+                objects.sort_by(compare_fn);
                 let mid = objects.len() / 2;
                 left = Rc::new(BVHNode::new(&objects[..mid], rng));
                 right = Rc::new(BVHNode::new(&objects[mid..], rng));
@@ -270,7 +270,7 @@ impl Hittable for BVHNode {
         self.bbox
     }
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
-        if self.bbox.hit(ray, t_min, t_max) {
+        if !self.bbox.hit(ray, t_min, t_max) {
             return None;
         }
         match self.left.hit(ray, t_min, t_max) {

@@ -58,9 +58,9 @@ fn generate_spheres(objects: &mut HittableList) {
         }
     }
 
-    // let bvh = Rc::new(BVHNode::new(&objects.objects, &mut rng));
-    // objects.clear();
-    // objects.push(bvh);
+    let bvh = Rc::new(BVHNode::new(&objects.objects, &mut rng));
+    objects.clear();
+    objects.push(bvh);
 }
 
 fn main() {
