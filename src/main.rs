@@ -66,10 +66,10 @@ fn generate_spheres(objects: &mut HittableList) {
     let something = Vec3(4.0, 0.2, 0.0);
     for a in -11..11 {
         for b in -11..11 {
+            let choose_mat = rng.f32();
             let center = Vec3(a as f32 + 0.9 * rng.f32(), 0.2, b as f32 + 0.9 * rng.f32());
             if (center - something).length() > 0.9 {
                 let material: Rc<dyn Material>;
-                let choose_mat = rng.f32();
                 if choose_mat < 0.8 {
                     material = Rc::new(Lambertian::new(Vec3::rand(&mut rng) * Vec3::rand(&mut rng)));
                 } else if choose_mat < 0.95 {
