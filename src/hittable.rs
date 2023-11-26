@@ -16,6 +16,59 @@ impl Ray {
     }
 }
 
+pub struct HitRecord {
+    pub p: Vec3,
+    pub normal: Vec3,
+    pub material: Rc<dyn Material>,
+    pub t: f32,
+    pub front_face: bool,
+}
+impl HitRecord {
+    pub fn new(p: Vec3, normal: Vec3, material: Rc<dyn Material>, t: f32, front_face: bool) -> HitRecord {
+        HitRecord {
+            p,
+            normal,
+            material,
+            t,
+            front_face,
+        }
+    }
+}
+
+pub trait Hittable {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
+}
+
+pub struct HittableList {
+    objects: Vec<Box<dyn Hittable>>,
+}
+impl HittableList {
+    pub fn new() -> HittableList {
+        HittableList { objects: Vec::new() }
+    }
+    pub fn push(&mut self, obj: Box<dyn Hittable>) {
+        self.objects.push(obj);
+    }
+}
+impl Hittable for HittableList {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let mut t_max = t_max;
+        let mut rec = None;
+
+        for obj in self.objects.iter() {
+            match obj.hit(ray, t_min, t_max) {
+                None => (),
+                Some(tmp_rec) => {
+                    t_max = tmp_rec.t;
+                    rec = Some(tmp_rec);
+                }
+            }
+        }
+
+        rec
+    }
+}
+
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
@@ -29,7 +82,9 @@ impl Sphere {
             material,
         }
     }
-    pub fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> f32 {
+}
+impl Hittable for Sphere {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
         let a = ray.direction.length2();
         let half_b = oc.dot(ray.direction);
@@ -37,32 +92,31 @@ impl Sphere {
         let discriminant = half_b * half_b - a * c;
 
         if discriminant < 0.0 {
-            return f32::MAX;
+            return None;
         }
 
         let disc_sqrt = discriminant.sqrt();
-        let root = (-half_b - disc_sqrt) / a;
-        if t_min < root && root < t_max {
-            return root;
-        }
-        let root = (-half_b + disc_sqrt) / a;
-        if t_min < root && root < t_max {
-            return root;
-        }
-
-        f32::MAX
-    }
-    pub fn hit_spheres(ray: &Ray, spheres: &[Sphere]) -> (usize, f32) {
-        let mut sphere_idx = 0;
-        let mut t_max = f32::MAX;
-
-        for (idx, sphere) in spheres.iter().enumerate() {
-            let t = sphere.hit(ray, 0.0001, t_max);
-            if t < t_max {
-                sphere_idx = idx;
-                t_max = t;
+        let mut root = (-half_b - disc_sqrt) / a;
+        if root <= t_min || root >= t_max {
+            root = (-half_b + disc_sqrt) / a;
+            if root <= t_min || root >= t_max {
+                return None;
             }
         }
-        (sphere_idx, t_max)
+
+        let p = ray.at(root);
+        let outward_normal = (p - self.center) / self.radius;
+        let front_face = ray.direction.dot(outward_normal) < 0.0;
+
+        Some(HitRecord::new(
+            p,
+            match front_face {
+                true => outward_normal,
+                false => -outward_normal,
+            },
+            self.material.clone(),
+            root,
+            front_face,
+        ))
     }
 }
