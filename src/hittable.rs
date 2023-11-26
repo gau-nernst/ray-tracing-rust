@@ -1,8 +1,11 @@
+use std::cmp::Ordering;
 use std::mem;
+use std::ops::Index;
 use std::rc::Rc;
 
 use crate::material::Material;
-use crate::vec3::{Axis, Vec3};
+use crate::pcg32::PCG32;
+use crate::vec3::Vec3;
 
 pub struct Ray {
     pub origin: Vec3,
@@ -56,23 +59,16 @@ impl AABB {
             z: (a.z.0.min(b.z.0), a.z.1.max(b.z.1)),
         }
     }
-    fn axis(&self, axis: Axis) -> (f32, f32) {
-        match axis {
-            Axis::X => self.x,
-            Axis::Y => self.y,
-            Axis::Z => self.z,
-        }
-    }
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> bool {
         let mut t_min = t_min;
         let mut t_max = t_max;
 
-        for axis in [Axis::X, Axis::Y, Axis::Z] {
-            let inv_d = 1.0 / ray.direction.axis(axis);
-            let origin = ray.origin.axis(axis);
+        for axis in 0..3 {
+            let inv_d = 1.0 / ray.direction[axis];
+            let origin = ray.origin[axis];
 
-            let mut t0 = (self.axis(axis).0 - origin) * inv_d;
-            let mut t1 = (self.axis(axis).1 - origin) * inv_d;
+            let mut t0 = (self[axis].0 - origin) * inv_d;
+            let mut t1 = (self[axis].1 - origin) * inv_d;
 
             if inv_d < 0.0 {
                 mem::swap(&mut t0, &mut t1);
@@ -89,6 +85,17 @@ impl AABB {
         true
     }
 }
+impl Index<usize> for AABB {
+    type Output = (f32, f32);
+    fn index(&self, index: usize) -> &(f32, f32) {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
+            _ => panic!("index out of bounds"),
+        }
+    }
+}
 
 pub trait Hittable {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
@@ -96,7 +103,7 @@ pub trait Hittable {
 }
 
 pub struct HittableList {
-    objects: Vec<Box<dyn Hittable>>,
+    pub objects: Vec<Rc<dyn Hittable>>,
     bbox: AABB,
 }
 
@@ -104,9 +111,13 @@ impl HittableList {
     pub fn new() -> HittableList {
         HittableList { objects: Vec::new(), bbox: AABB::empty() }
     }
-    pub fn push(&mut self, obj: Box<dyn Hittable>) {
+    pub fn push(&mut self, obj: Rc<dyn Hittable>) {
         self.bbox = AABB::from_aabb(self.bbox, obj.bbox());
         self.objects.push(obj);
+    }
+    pub fn clear(&mut self) {
+        self.objects.clear();
+        self.bbox = AABB::empty();
     }
 }
 impl Hittable for HittableList {
@@ -188,12 +199,72 @@ impl Hittable for Sphere {
     }
 }
 
-struct BVHNode {
-    left: Box<dyn Hittable>,
-    right: Box<dyn Hittable>,
+pub struct BVHNode {
+    left: Rc<dyn Hittable>,
+    right: Rc<dyn Hittable>,
     bbox: AABB,
 }
-impl BVHNode {}
+impl BVHNode {
+    fn compare_bbox(a: &Rc<dyn Hittable>, b: &Rc<dyn Hittable>, axis: usize) -> Ordering {
+        let ax = a.bbox()[axis].0;
+        let bx = b.bbox()[axis].0;
+        if ax < bx {
+            Ordering::Less
+        } else if ax > bx {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+    fn compare_bbox_x(a: &Rc<dyn Hittable>, b: &Rc<dyn Hittable>) -> Ordering {
+        BVHNode::compare_bbox(a, b, 0)
+    }
+    fn compare_bbox_y(a: &Rc<dyn Hittable>, b: &Rc<dyn Hittable>) -> Ordering {
+        BVHNode::compare_bbox(a, b, 1)
+    }
+    fn compare_bbox_z(a: &Rc<dyn Hittable>, b: &Rc<dyn Hittable>) -> Ordering {
+        BVHNode::compare_bbox(a, b, 2)
+    }
+    pub fn new(objects: &[Rc<dyn Hittable>], rng: &mut PCG32) -> BVHNode {
+        let mut objects = objects.to_vec();
+
+        let left;
+        let right;
+
+        let compare_bbox = match rng.u32_between(0, 3) {
+            0 => BVHNode::compare_bbox_x,
+            1 => BVHNode::compare_bbox_y,
+            2 => BVHNode::compare_bbox_z,
+            _ => panic!("This should not happen"),
+        };
+
+        match objects.len() {
+            1 => {
+                left = objects[0].clone();
+                right = objects[0].clone();
+            }
+            2 => match compare_bbox(&objects[0], &objects[1]) {
+                Ordering::Less => {
+                    left = objects[0].clone();
+                    right = objects[1].clone();
+                }
+                _ => {
+                    left = objects[1].clone();
+                    right = objects[0].clone();
+                }
+            },
+            _ => {
+                objects.sort_by(compare_bbox);
+                let mid = objects.len() / 2;
+                left = Rc::new(BVHNode::new(&objects[..mid], rng));
+                right = Rc::new(BVHNode::new(&objects[mid..], rng));
+            }
+        }
+
+        let bbox = AABB::from_aabb(left.bbox(), right.bbox());
+        BVHNode { left, right, bbox }
+    }
+}
 impl Hittable for BVHNode {
     fn bbox(&self) -> AABB {
         self.bbox
@@ -202,7 +273,6 @@ impl Hittable for BVHNode {
         if self.bbox.hit(ray, t_min, t_max) {
             return None;
         }
-
         match self.left.hit(ray, t_min, t_max) {
             None => self.right.hit(ray, t_min, t_max),
             Some(left_rec) => match self.right.hit(ray, t_min, left_rec.t) {
