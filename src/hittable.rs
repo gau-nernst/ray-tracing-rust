@@ -29,7 +29,7 @@ impl HitRecord {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct AABB {
+pub struct AABB {
     x: (f32, f32),
     y: (f32, f32),
     z: (f32, f32),
@@ -110,6 +110,9 @@ impl HittableList {
     }
 }
 impl Hittable for HittableList {
+    fn bbox(&self) -> AABB {
+        self.bbox
+    }
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let mut t_max = t_max;
         let mut rec = None;
@@ -125,9 +128,6 @@ impl Hittable for HittableList {
         }
 
         rec
-    }
-    fn bbox(&self) -> AABB {
-        self.bbox
     }
 }
 
@@ -148,6 +148,9 @@ impl Sphere {
     }
 }
 impl Hittable for Sphere {
+    fn bbox(&self) -> AABB {
+        self.bbox
+    }
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
         let a = ray.direction.length2();
@@ -183,7 +186,29 @@ impl Hittable for Sphere {
             front_face,
         ))
     }
+}
+
+struct BVHNode {
+    left: Box<dyn Hittable>,
+    right: Box<dyn Hittable>,
+    bbox: AABB,
+}
+impl BVHNode {}
+impl Hittable for BVHNode {
     fn bbox(&self) -> AABB {
         self.bbox
+    }
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        if self.bbox.hit(ray, t_min, t_max) {
+            return None;
+        }
+
+        match self.left.hit(ray, t_min, t_max) {
+            None => self.right.hit(ray, t_min, t_max),
+            Some(left_rec) => match self.right.hit(ray, t_min, left_rec.t) {
+                None => Some(left_rec),
+                Some(right_rec) => Some(right_rec),
+            },
+        }
     }
 }
