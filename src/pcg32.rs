@@ -3,6 +3,7 @@ pub struct PCG32State {
     inc: u64,
 }
 
+#[rustfmt::skip]
 impl PCG32State {
     pub fn new(init_state: u64, init_seq: u64) -> PCG32State {
         let mut rng = PCG32State { state: 0, inc: 0 };
@@ -23,13 +24,7 @@ impl PCG32State {
         let rot = (old_state >> 59) as u32;
         (xorshifted >> rot) | (xorshifted << (0u32.wrapping_sub(rot) & 31))
     }
-    pub fn u32_between(&mut self, lo: u32, hi: u32) -> u32 {
-        lo + self.u32() % (hi - lo) // not accurate
-    }
-    pub fn f32(&mut self) -> f32 {
-        (self.u32() >> 8) as f32 / (1 << 24) as f32
-    }
-    pub fn f32_between(&mut self, lo: f32, hi: f32) -> f32 {
-        lo + self.f32() * (hi - lo)
-    }
+    pub fn u32_between(&mut self, lo: u32, hi: u32) -> u32 { lo + self.u32() % (hi - lo) } // not accurate
+    pub fn f32(&mut self) -> f32 { (self.u32() >> 8) as f32 / (1 << 24) as f32 }
+    pub fn f32_between(&mut self, lo: f32, hi: f32) -> f32 { lo + self.f32() * (hi - lo) }
 }
