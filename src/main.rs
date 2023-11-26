@@ -37,7 +37,7 @@ fn generate_spheres(objects: &mut HittableList) {
     objects.push(Rc::new(Sphere::new(
         Vec3(4.0, 1.0, 0.0),
         1.0,
-        Rc::new(Metal::new(Vec3(0.7, 0.6, 0.5), 0.0)),
+        Rc::new(Metal::from_vec3(Vec3(0.7, 0.6, 0.5), 0.0)),
     )));
 
     let something = Vec3(4.0, 0.2, 0.0);
@@ -50,7 +50,10 @@ fn generate_spheres(objects: &mut HittableList) {
                 if choose_mat < 0.8 {
                     material = Rc::new(Lambertian::from_vec3(Vec3::rand(&mut rng) * Vec3::rand(&mut rng)));
                 } else if choose_mat < 0.95 {
-                    material = Rc::new(Metal::new(Vec3::rand_between(&mut rng, 0.5, 1.0), rng.f32() * 0.5));
+                    material = Rc::new(Metal::from_vec3(
+                        Vec3::rand_between(&mut rng, 0.5, 1.0),
+                        rng.f32() * 0.5,
+                    ));
                 } else {
                     material = Rc::new(Dielectric::new(1.5));
                 }

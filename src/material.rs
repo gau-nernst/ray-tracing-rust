@@ -31,12 +31,15 @@ impl Material for Lambertian {
 }
 
 pub struct Metal {
-    albedo: Vec3,
+    albedo: Rc<dyn Texture>,
     fuzz: f32,
 }
 impl Metal {
-    pub fn new(albedo: Vec3, fuzz: f32) -> Metal {
+    pub fn new(albedo: Rc<dyn Texture>, fuzz: f32) -> Metal {
         Metal { albedo, fuzz }
+    }
+    pub fn from_vec3(albedo: Vec3, fuzz: f32) -> Metal {
+        Metal::new(Rc::new(Solid::new(albedo.0, albedo.1, albedo.2)), fuzz)
     }
 }
 fn reflect(incident: Vec3, n: Vec3) -> Vec3 {
@@ -49,7 +52,10 @@ impl Material for Metal {
             return None;
         }
         let reflected = reflect(*incident, rec.normal);
-        Some((reflected + Vec3::random_unit_sphere(rng) * self.fuzz, self.albedo))
+        Some((
+            reflected + Vec3::random_unit_sphere(rng) * self.fuzz,
+            self.albedo.value(rec.u, rec.v, &rec.p),
+        ))
     }
 }
 
@@ -82,8 +88,9 @@ impl Material for Dielectric {
         let cos_theta = (-incident_norm.dot(rec.normal)).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
+        // total internal reflection or partial reflection (fresnel)
         let scatter = match (eta * sin_theta > 1.0) || (schlick_reflectance(cos_theta, eta) > rng.f32()) {
-            true => reflect(incident_norm, rec.normal), // total internal reflection
+            true => reflect(incident_norm, rec.normal),
             false => refract(incident_norm, rec.normal, eta),
         };
         Some((scatter, Vec3::one()))
