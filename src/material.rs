@@ -1,17 +1,22 @@
 use crate::hittable::HitRecord;
 use crate::pcg32::PCG32;
+use crate::texture::{Solid, Texture};
 use crate::vec3::Vec3;
+use std::rc::Rc;
 
 pub trait Material {
     fn scatter(&self, incident: &Vec3, rec: &HitRecord, rng: &mut PCG32) -> Option<(Vec3, Vec3)>;
 }
 
 pub struct Lambertian {
-    albedo: Vec3,
+    albedo: Rc<dyn Texture>,
 }
 impl Lambertian {
-    pub fn new(albedo: Vec3) -> Lambertian {
+    pub fn new(albedo: Rc<dyn Texture>) -> Lambertian {
         Lambertian { albedo }
+    }
+    pub fn from_vec3(albedo: Vec3) -> Lambertian {
+        Lambertian::new(Rc::new(Solid::new(albedo.0, albedo.1, albedo.2)))
     }
 }
 impl Material for Lambertian {
@@ -21,7 +26,7 @@ impl Material for Lambertian {
         if diffuse.length2() < 1e-16 {
             diffuse = rec.normal;
         }
-        Some((diffuse, self.albedo))
+        Some((diffuse, self.albedo.value(rec.u, rec.v, &rec.p)))
     }
 }
 
@@ -57,10 +62,10 @@ impl Dielectric {
     }
 }
 fn refract(incident: Vec3, n: Vec3, eta: f32) -> Vec3 {
-    let cos_theta = f32::min(-incident.dot(n), 1.0);
-    let r_out_perp = eta * (incident + cos_theta * n);
-    let r_out_para = -(1.0 - r_out_perp.length2()).abs().sqrt() * n;
-    r_out_perp + r_out_para
+    let cos_theta = (-incident.dot(n)).min(1.0);
+    let r_perp = eta * (incident + cos_theta * n);
+    let r_para = -(1.0 - r_perp.length2()).abs().sqrt() * n;
+    r_perp + r_para
 }
 fn schlick_reflectance(cos_theta: f32, eta: f32) -> f32 {
     let r0 = (1.0 - eta) / (1.0 + eta);
@@ -77,10 +82,10 @@ impl Material for Dielectric {
         let cos_theta = (-incident_norm.dot(rec.normal)).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
-        let refracted = match (eta * sin_theta <= 1.0) && (schlick_reflectance(cos_theta, eta) < rng.f32()) {
+        let scatter = match (eta * sin_theta <= 1.0) && (schlick_reflectance(cos_theta, eta) < rng.f32()) {
             true => refract(incident_norm, rec.normal, eta),
             false => reflect(incident_norm, rec.normal), // total internal reflection
         };
-        Some((refracted, Vec3::zero()))
+        Some((scatter, Vec3::zero()))
     }
 }

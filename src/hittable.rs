@@ -23,11 +23,21 @@ pub struct HitRecord {
     pub normal: Vec3,
     pub material: Rc<dyn Material>,
     pub t: f32,
+    pub u: f32,
+    pub v: f32,
     pub front_face: bool,
 }
 impl HitRecord {
-    pub fn new(p: Vec3, normal: Vec3, material: Rc<dyn Material>, t: f32, front_face: bool) -> HitRecord {
-        HitRecord { p, normal, material, t, front_face }
+    pub fn new(
+        p: Vec3,
+        normal: Vec3,
+        material: Rc<dyn Material>,
+        t: f32,
+        u: f32,
+        v: f32,
+        front_face: bool,
+    ) -> HitRecord {
+        HitRecord { p, normal, material, t, u, v, front_face }
     }
 }
 
@@ -194,6 +204,8 @@ impl Hittable for Sphere {
             },
             self.material.clone(),
             root,
+            0.0,
+            0.0,
             front_face,
         ))
     }

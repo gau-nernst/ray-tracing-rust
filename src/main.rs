@@ -2,6 +2,7 @@ mod camera;
 mod hittable;
 mod material;
 mod pcg32;
+mod texture;
 mod tiff;
 mod vec3;
 use std::rc::Rc;
@@ -21,7 +22,7 @@ fn generate_spheres(objects: &mut HittableList) {
     objects.push(Rc::new(Sphere::new(
         Vec3(0.0, -1000.0, 0.0),
         1000.0,
-        Rc::new(Lambertian::new(Vec3(0.5, 0.5, 0.5))),
+        Rc::new(Lambertian::from_vec3(Vec3(0.5, 0.5, 0.5))),
     )));
     objects.push(Rc::new(Sphere::new(
         Vec3(0.0, 1.0, 0.0),
@@ -31,7 +32,7 @@ fn generate_spheres(objects: &mut HittableList) {
     objects.push(Rc::new(Sphere::new(
         Vec3(-4.0, 1.0, 0.0),
         1.0,
-        Rc::new(Lambertian::new(Vec3(0.4, 0.2, 0.1))),
+        Rc::new(Lambertian::from_vec3(Vec3(0.4, 0.2, 0.1))),
     )));
     objects.push(Rc::new(Sphere::new(
         Vec3(4.0, 1.0, 0.0),
@@ -47,7 +48,7 @@ fn generate_spheres(objects: &mut HittableList) {
             if (center - something).length() > 0.9 {
                 let material: Rc<dyn Material>;
                 if choose_mat < 0.8 {
-                    material = Rc::new(Lambertian::new(Vec3::rand(&mut rng) * Vec3::rand(&mut rng)));
+                    material = Rc::new(Lambertian::from_vec3(Vec3::rand(&mut rng) * Vec3::rand(&mut rng)));
                 } else if choose_mat < 0.95 {
                     material = Rc::new(Metal::new(Vec3::rand_between(&mut rng, 0.5, 1.0), rng.f32() * 0.5));
                 } else {
