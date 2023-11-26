@@ -1,9 +1,9 @@
 use crate::hittable::HitRecord;
-use crate::pcg32;
+use crate::pcg32::PCG32;
 use crate::vec3::Vec3;
 
 pub trait Material {
-    fn scatter(&self, incident: &Vec3, rec: &HitRecord, rng: &mut pcg32::PCG32State) -> Option<(Vec3, Vec3)>;
+    fn scatter(&self, incident: &Vec3, rec: &HitRecord, rng: &mut PCG32) -> Option<(Vec3, Vec3)>;
 }
 
 pub struct Lambertian {
@@ -15,7 +15,7 @@ impl Lambertian {
     }
 }
 impl Material for Lambertian {
-    fn scatter(&self, _incident: &Vec3, rec: &HitRecord, rng: &mut pcg32::PCG32State) -> Option<(Vec3, Vec3)> {
+    fn scatter(&self, _incident: &Vec3, rec: &HitRecord, rng: &mut PCG32) -> Option<(Vec3, Vec3)> {
         let mut diffuse = rec.normal + Vec3::random_unit_sphere(rng).normalize();
         // catch degenerate scatter direction
         if diffuse.length2() < 1e-16 {
@@ -38,7 +38,7 @@ fn reflect(incident: Vec3, n: Vec3) -> Vec3 {
     incident - 2.0 * incident.dot(n) * n
 }
 impl Material for Metal {
-    fn scatter(&self, incident: &Vec3, rec: &HitRecord, rng: &mut pcg32::PCG32State) -> Option<(Vec3, Vec3)> {
+    fn scatter(&self, incident: &Vec3, rec: &HitRecord, rng: &mut PCG32) -> Option<(Vec3, Vec3)> {
         // only reflect when incident is opposite normal
         if incident.dot(rec.normal) >= 0.0 {
             return None;
@@ -68,7 +68,7 @@ fn schlick_reflectance(cos_theta: f32, eta: f32) -> f32 {
     r02 + (1.0 - r02) * (1.0 - cos_theta).powf(5.0)
 }
 impl Material for Dielectric {
-    fn scatter(&self, incident: &Vec3, rec: &HitRecord, rng: &mut pcg32::PCG32State) -> Option<(Vec3, Vec3)> {
+    fn scatter(&self, incident: &Vec3, rec: &HitRecord, rng: &mut PCG32) -> Option<(Vec3, Vec3)> {
         let eta = match rec.front_face {
             true => 1.0 / self.eta,
             false => self.eta,
