@@ -39,11 +39,7 @@ impl TiffFile {
     pub fn new(path: &str, img_width: u32, img_height: u32) -> TiffFile {
         let path = Path::new(path);
         let f = BufWriter::new(File::create(path).unwrap());
-        let mut tiff_file = TiffFile {
-            f,
-            img_width,
-            img_height,
-        };
+        let mut tiff_file = TiffFile { f, img_width, img_height };
         tiff_file.write_header();
         tiff_file
     }

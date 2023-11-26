@@ -7,13 +7,11 @@ pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,
 }
+
+#[rustfmt::skip]
 impl Ray {
-    pub fn new(origin: Vec3, direction: Vec3) -> Ray {
-        Ray { origin, direction }
-    }
-    pub fn at(&self, t: f32) -> Vec3 {
-        self.origin + self.direction * t
-    }
+    pub fn new(origin: Vec3, direction: Vec3) -> Ray { Ray { origin, direction } }
+    pub fn at(&self, t: f32) -> Vec3 { self.origin + self.direction * t }
 }
 
 pub struct HitRecord {
@@ -25,13 +23,7 @@ pub struct HitRecord {
 }
 impl HitRecord {
     pub fn new(p: Vec3, normal: Vec3, material: Rc<dyn Material>, t: f32, front_face: bool) -> HitRecord {
-        HitRecord {
-            p,
-            normal,
-            material,
-            t,
-            front_face,
-        }
+        HitRecord { p, normal, material, t, front_face }
     }
 }
 
@@ -42,13 +34,11 @@ pub trait Hittable {
 pub struct HittableList {
     objects: Vec<Box<dyn Hittable>>,
 }
+
+#[rustfmt::skip]
 impl HittableList {
-    pub fn new() -> HittableList {
-        HittableList { objects: Vec::new() }
-    }
-    pub fn push(&mut self, obj: Box<dyn Hittable>) {
-        self.objects.push(obj);
-    }
+    pub fn new() -> HittableList { HittableList { objects: Vec::new() } }
+    pub fn push(&mut self, obj: Box<dyn Hittable>) { self.objects.push(obj); }
 }
 impl Hittable for HittableList {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
@@ -76,11 +66,7 @@ pub struct Sphere {
 }
 impl Sphere {
     pub fn new(center: Vec3, radius: f32, material: Rc<dyn Material>) -> Sphere {
-        Sphere {
-            center,
-            radius,
-            material,
-        }
+        Sphere { center, radius, material }
     }
 }
 impl Hittable for Sphere {
