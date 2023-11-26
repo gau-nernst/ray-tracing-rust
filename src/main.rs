@@ -9,7 +9,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use camera::{Camera, Renderer};
-use hittable::{HittableList, Sphere};
+use hittable::{BVHNode, HittableList, Sphere};
 use material::{Dielectric, Lambertian, Material, Metal};
 use pcg32::PCG32;
 use tiff::TiffFile;
@@ -18,22 +18,22 @@ use vec3::Vec3;
 fn generate_spheres(objects: &mut HittableList) {
     let mut rng = PCG32::new(19, 29);
 
-    objects.push(Box::new(Sphere::new(
+    objects.push(Rc::new(Sphere::new(
         Vec3(0.0, -1000.0, 0.0),
         1000.0,
         Rc::new(Lambertian::new(Vec3(0.5, 0.5, 0.5))),
     )));
-    objects.push(Box::new(Sphere::new(
+    objects.push(Rc::new(Sphere::new(
         Vec3(0.0, 1.0, 0.0),
         1.0,
         Rc::new(Dielectric::new(1.5)),
     )));
-    objects.push(Box::new(Sphere::new(
+    objects.push(Rc::new(Sphere::new(
         Vec3(-4.0, 1.0, 0.0),
         1.0,
         Rc::new(Lambertian::new(Vec3(0.4, 0.2, 0.1))),
     )));
-    objects.push(Box::new(Sphere::new(
+    objects.push(Rc::new(Sphere::new(
         Vec3(4.0, 1.0, 0.0),
         1.0,
         Rc::new(Metal::new(Vec3(0.7, 0.6, 0.5), 0.0)),
@@ -53,15 +53,20 @@ fn generate_spheres(objects: &mut HittableList) {
                 } else {
                     material = Rc::new(Dielectric::new(1.5));
                 }
-                objects.push(Box::new(Sphere::new(center, 0.2, material)));
+                objects.push(Rc::new(Sphere::new(center, 0.2, material)));
             }
         }
     }
+
+    let bvh = Rc::new(BVHNode::new(&objects.objects, &mut rng));
+    objects.clear();
+    objects.push(bvh);
 }
 
 fn main() {
+    let aspect_ratio = 16.0 / 9.0;
     let camera = Camera::new(
-        3.0 / 2.0,
+        aspect_ratio,
         Vec3(13.0, 2.0, 3.0),
         Vec3(0.0, 0.0, 0.0),
         Vec3(0.0, 1.0, 0.0),
@@ -69,7 +74,7 @@ fn main() {
         0.1,
         10.0,
     );
-    let renderer = Renderer::new(400, 16.0 / 9.0, 10, 10);
+    let renderer = Renderer::new(400, aspect_ratio, 10, 10);
 
     let mut objects = HittableList::new();
     generate_spheres(&mut objects);

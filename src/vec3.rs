@@ -47,7 +47,19 @@ impl Vec3 {
 #[rustfmt::skip]
 mod vec3_ops {
     use super::Vec3;
-    use std::ops::{Add, Div, Mul, Neg, Sub};
+    use std::ops::{Add, Div, Mul, Neg, Sub, Index};
+
+    impl Index<usize> for Vec3 {
+        type Output = f32;
+        fn index(&self, index: usize) -> &f32 {
+            match index {
+                0 => &self.0,
+                1 => &self.1,
+                2 => &self.2,
+                _ => panic!("index out of bounds"),
+            }
+        }
+    }
 
     impl Neg for Vec3 {
         type Output = Vec3;
