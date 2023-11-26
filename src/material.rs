@@ -82,10 +82,10 @@ impl Material for Dielectric {
         let cos_theta = (-incident_norm.dot(rec.normal)).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
-        let scatter = match (eta * sin_theta <= 1.0) && (schlick_reflectance(cos_theta, eta) < rng.f32()) {
-            true => refract(incident_norm, rec.normal, eta),
-            false => reflect(incident_norm, rec.normal), // total internal reflection
+        let scatter = match (eta * sin_theta > 1.0) || (schlick_reflectance(cos_theta, eta) > rng.f32()) {
+            true => reflect(incident_norm, rec.normal), // total internal reflection
+            false => refract(incident_norm, rec.normal, eta),
         };
-        Some((scatter, Vec3::zero()))
+        Some((scatter, Vec3::one()))
     }
 }
