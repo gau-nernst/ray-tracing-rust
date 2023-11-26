@@ -1,68 +1,68 @@
 mod camera;
+mod hittable;
 mod material;
 mod pcg32;
-mod ray;
-mod sphere;
 mod tiff;
-mod utils;
 mod vec3;
 use std::rc::Rc;
 
 use std::time::Instant;
 
 use camera::Camera;
+use hittable::{Hittable, HittableList, Ray, Sphere};
 use material::{Dielectric, Lambertian, Material, Metal};
 use pcg32::PCG32State;
-use ray::Ray;
-use sphere::Sphere;
 use tiff::TiffFile;
 use vec3::Vec3;
 
-fn ray_color(ray: &Ray, spheres: &Vec<Sphere>, depth: i32, rng: &mut pcg32::PCG32State) -> Vec3 {
+fn ray_color(ray: &Ray, objects: &HittableList, depth: i32, rng: &mut pcg32::PCG32State) -> Vec3 {
     if depth <= 0 {
         return Vec3::zero();
     }
 
-    let (sphere_idx, t) = Sphere::hit_spheres(ray, spheres);
-
-    if t == f32::MAX {
-        let unit_direction = ray.direction.normalize();
-        let t = 0.5 * (unit_direction.1 + 1.0);
-        let color1 = Vec3::one();
-        let color2 = Vec3(0.5, 0.7, 1.0);
-        return color1 + t * (color2 - color1);
-    }
-
-    let sphere = &spheres[sphere_idx];
-    let incidence = ray.at(t);
-    let mut normal = (incidence - sphere.center) / sphere.radius;
-    let front_face = ray.direction.dot(normal) < 0.0;
-    if !front_face {
-        normal = -normal;
-    }
-
-    match sphere.material.scatter(&ray.direction, &normal, front_face, rng) {
-        None => Vec3::zero(),
-        Some((scatter, color)) => {
-            let scatter_ray = Ray::new(incidence, scatter);
-            color * ray_color(&scatter_ray, spheres, depth - 1, rng)
+    match objects.hit(ray, 0.001, f32::INFINITY) {
+        None => {
+            // background
+            let unit_direction = ray.direction.normalize();
+            let t = 0.5 * (unit_direction.1 + 1.0);
+            let color1 = Vec3::one();
+            let color2 = Vec3(0.5, 0.7, 1.0);
+            color1 + t * (color2 - color1)
         }
+        Some(rec) => match rec.material.scatter(&ray.direction, &rec, rng) {
+            None => Vec3::zero(),
+            Some((scatter, color)) => {
+                let scatter_ray = Ray::new(rec.p, scatter);
+                color * ray_color(&scatter_ray, objects, depth - 1, rng)
+            }
+        },
     }
 }
 
-fn generate_spheres() -> Vec<Sphere> {
+fn generate_spheres(objects: &mut HittableList) {
     let mut rng = PCG32State::new(19, 29);
 
-    let mut spheres = vec![
-        Sphere::new(
-            Vec3(0.0, -1000.0, 0.0),
-            1000.0,
-            Rc::new(Lambertian::new(Vec3(0.5, 0.5, 0.5))),
-        ),
-        Sphere::new(Vec3(0.0, 1.0, 0.0), 1.0, Rc::new(Dielectric::new(1.5))),
-        Sphere::new(Vec3(-4.0, 1.0, 0.0), 1.0, Rc::new(Lambertian::new(Vec3(0.4, 0.2, 0.1)))),
-        Sphere::new(Vec3(4.0, 1.0, 0.0), 1.0, Rc::new(Metal::new(Vec3(0.7, 0.6, 0.5), 0.0))),
-    ];
+    objects.push(Box::new(Sphere::new(
+        Vec3(0.0, -1000.0, 0.0),
+        1000.0,
+        Rc::new(Lambertian::new(Vec3(0.5, 0.5, 0.5))),
+    )));
+    objects.push(Box::new(Sphere::new(
+        Vec3(0.0, 1.0, 0.0),
+        1.0,
+        Rc::new(Dielectric::new(1.5)),
+    )));
+    objects.push(Box::new(Sphere::new(
+        Vec3(-4.0, 1.0, 0.0),
+        1.0,
+        Rc::new(Lambertian::new(Vec3(0.4, 0.2, 0.1))),
+    )));
+    objects.push(Box::new(Sphere::new(
+        Vec3(4.0, 1.0, 0.0),
+        1.0,
+        Rc::new(Metal::new(Vec3(0.7, 0.6, 0.5), 0.0)),
+    )));
+
     let something = Vec3(4.0, 0.2, 0.0);
     for a in -11..11 {
         for b in -11..11 {
@@ -77,11 +77,10 @@ fn generate_spheres() -> Vec<Sphere> {
                 } else {
                     material = Rc::new(Dielectric::new(1.5));
                 }
-                spheres.push(Sphere::new(center, 0.2, material));
+                objects.push(Box::new(Sphere::new(center, 0.2, material)));
             }
         }
     }
-    spheres
 }
 
 fn main() {
@@ -101,7 +100,8 @@ fn main() {
         10.0,
     );
 
-    let spheres = generate_spheres();
+    let mut objects = HittableList::new();
+    generate_spheres(&mut objects);
     let mut buffer = vec![0_u8; (img_height * img_width * 3) as usize];
 
     let now = Instant::now();
@@ -117,7 +117,7 @@ fn main() {
                 let v = ((img_height - 1 - j) as f32 + rng.f32()) / img_height as f32;
 
                 let r = camera.get_ray(u, v, &mut rng);
-                pixel_color = pixel_color + ray_color(&r, &spheres, max_depth, &mut rng);
+                pixel_color = pixel_color + ray_color(&r, &objects, max_depth, &mut rng);
             }
             pixel_color = pixel_color / samples_per_pixel as f32;
 

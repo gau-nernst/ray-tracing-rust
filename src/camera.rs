@@ -1,5 +1,5 @@
+use crate::hittable::Ray;
 use crate::pcg32;
-use crate::ray::Ray;
 use crate::vec3::Vec3;
 use std::f32::consts::PI;
 
