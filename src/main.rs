@@ -1,20 +1,17 @@
 mod camera;
+mod hittable;
 mod material;
 mod pcg32;
-mod ray;
-mod hittable;
 mod tiff;
-mod utils;
 mod vec3;
 use std::rc::Rc;
 
 use std::time::Instant;
 
 use camera::Camera;
+use hittable::{Ray, Sphere};
 use material::{Dielectric, Lambertian, Material, Metal};
 use pcg32::PCG32State;
-use ray::Ray;
-use hittable::Sphere;
 use tiff::TiffFile;
 use vec3::Vec3;
 
