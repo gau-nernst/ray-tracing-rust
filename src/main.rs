@@ -8,39 +8,15 @@ use std::rc::Rc;
 
 use std::time::Instant;
 
-use camera::Camera;
-use hittable::{Hittable, HittableList, Ray, Sphere};
+use camera::{Camera, Renderer};
+use hittable::{HittableList, Sphere};
 use material::{Dielectric, Lambertian, Material, Metal};
-use pcg32::PCG32State;
+use pcg32::PCG32;
 use tiff::TiffFile;
 use vec3::Vec3;
 
-fn ray_color(ray: &Ray, objects: &HittableList, depth: i32, rng: &mut pcg32::PCG32State) -> Vec3 {
-    if depth <= 0 {
-        return Vec3::zero();
-    }
-
-    match objects.hit(ray, 0.001, f32::INFINITY) {
-        None => {
-            // background
-            let unit_direction = ray.direction.normalize();
-            let t = 0.5 * (unit_direction.1 + 1.0);
-            let color1 = Vec3::one();
-            let color2 = Vec3(0.5, 0.7, 1.0);
-            color1 + t * (color2 - color1)
-        }
-        Some(rec) => match rec.material.scatter(&ray.direction, &rec, rng) {
-            None => Vec3::zero(),
-            Some((scatter, color)) => {
-                let scatter_ray = Ray::new(rec.p, scatter);
-                color * ray_color(&scatter_ray, objects, depth - 1, rng)
-            }
-        },
-    }
-}
-
 fn generate_spheres(objects: &mut HittableList) {
-    let mut rng = PCG32State::new(19, 29);
+    let mut rng = PCG32::new(19, 29);
 
     objects.push(Box::new(Sphere::new(
         Vec3(0.0, -1000.0, 0.0),
@@ -84,54 +60,27 @@ fn generate_spheres(objects: &mut HittableList) {
 }
 
 fn main() {
-    let aspect_ratio = 3.0 / 2.0;
-    let img_width = 400;
-    let img_height = (img_width as f32 / aspect_ratio) as u32;
-    let samples_per_pixel = 10;
-    let max_depth = 10;
-
     let camera = Camera::new(
+        3.0 / 2.0,
         Vec3(13.0, 2.0, 3.0),
         Vec3(0.0, 0.0, 0.0),
         Vec3(0.0, 1.0, 0.0),
         20.0,
-        aspect_ratio,
         0.1,
         10.0,
     );
+    let renderer = Renderer::new(400, 16.0 / 9.0, 10, 10);
 
     let mut objects = HittableList::new();
     generate_spheres(&mut objects);
-    let mut buffer = vec![0_u8; (img_height * img_width * 3) as usize];
+    let mut buffer = vec![0_u8; (renderer.img_height * renderer.img_width * 3) as usize];
 
     let now = Instant::now();
-
-    for j in 0..img_height {
-        eprint!("Line {j}\r");
-        for i in 0..img_width {
-            let mut rng = PCG32State::new(17 + j as u64, 23 + i as u64);
-
-            let mut pixel_color = Vec3::zero();
-            for _ in 0..samples_per_pixel {
-                let u = (i as f32 + rng.f32()) / img_width as f32;
-                let v = ((img_height - 1 - j) as f32 + rng.f32()) / img_height as f32;
-
-                let r = camera.get_ray(u, v, &mut rng);
-                pixel_color = pixel_color + ray_color(&r, &objects, max_depth, &mut rng);
-            }
-            pixel_color = pixel_color / samples_per_pixel as f32;
-
-            let offset = ((j * img_width + i) * 3) as usize;
-            buffer[offset] = (pixel_color.0.sqrt().clamp(0.0, 1.0) * 255.0) as u8;
-            buffer[offset + 1] = (pixel_color.1.sqrt().clamp(0.0, 1.0) * 255.0) as u8;
-            buffer[offset + 2] = (pixel_color.2.sqrt().clamp(0.0, 1.0) * 255.0) as u8;
-        }
-    }
-
-    eprintln!("\nDone.");
+    renderer.render(&objects, &camera, &mut buffer);
     let elapsed_time = now.elapsed();
+    eprintln!("\nDone.");
     eprintln!("{} seconds.", elapsed_time.as_secs());
 
-    let mut tiff_file = TiffFile::new("sample.tiff", img_width, img_height);
+    let mut tiff_file = TiffFile::new("sample.tiff", renderer.img_width, renderer.img_height);
     tiff_file.write(&buffer);
 }

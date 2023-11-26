@@ -1,12 +1,12 @@
-pub struct PCG32State {
+pub struct PCG32 {
     state: u64,
     inc: u64,
 }
 
 #[rustfmt::skip]
-impl PCG32State {
-    pub fn new(init_state: u64, init_seq: u64) -> PCG32State {
-        let mut rng = PCG32State { state: 0, inc: 0 };
+impl PCG32 {
+    pub fn new(init_state: u64, init_seq: u64) -> PCG32 {
+        let mut rng = PCG32 { state: 0, inc: 0 };
         rng.seed(init_state, init_seq);
         rng
     }

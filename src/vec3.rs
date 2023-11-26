@@ -1,4 +1,4 @@
-use crate::pcg32;
+use crate::pcg32::PCG32;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vec3(pub f32, pub f32, pub f32);
@@ -18,15 +18,15 @@ impl Vec3 {
         )
     }
     pub fn normalize(self) -> Vec3 { self / self.length() }
-    pub fn rand(rng: &mut pcg32::PCG32State) -> Vec3 { Vec3(rng.f32(), rng.f32(), rng.f32()) }
-    pub fn rand_between(rng: &mut pcg32::PCG32State, lo: f32, hi: f32) -> Vec3 {
+    pub fn rand(rng: &mut PCG32) -> Vec3 { Vec3(rng.f32(), rng.f32(), rng.f32()) }
+    pub fn rand_between(rng: &mut PCG32, lo: f32, hi: f32) -> Vec3 {
         Vec3(
             rng.f32_between(lo, hi),
             rng.f32_between(lo, hi),
             rng.f32_between(lo, hi),
         )
     }
-    pub fn random_unit_sphere(rng: &mut pcg32::PCG32State) -> Vec3 {
+    pub fn random_unit_sphere(rng: &mut PCG32) -> Vec3 {
         loop {
             let p = Vec3::rand_between(rng, -1.0, 1.0);
             if p.length2() < 1.0 {
@@ -34,7 +34,7 @@ impl Vec3 {
             }
         }
     }
-    pub fn random_unit_disk(rng: &mut pcg32::PCG32State) -> Vec3 {
+    pub fn random_unit_disk(rng: &mut PCG32) -> Vec3 {
         loop {
             let p = Vec3(rng.f32(), rng.f32(), 0.0);
             if p.length2() < 1.0 {
